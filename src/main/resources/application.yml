@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres
+    username: postgres.kkfxxteavjukwkrdtycc
+    password: chlgmltn04!      # ← 네가 Supabase에서 설정한 DB 비번
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+
+server:
+  port: 8080
