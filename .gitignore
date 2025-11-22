@@ -35,3 +35,35 @@ out/
 
 ### VS Code ###
 .vscode/
+
+Spring Boot & Security
+
+DB 비밀번호, API 키 등 민감한 설정 파일 무시
+
+src/main/resources/application.yml
+src/main/resources/application-.yml
+src/main/resources/application.properties
+src/main/resources/application-.properties
+
+OS 관련 파일 (맥/윈도우)
+
+.DS_Store
+Thumbs.db
+
+IDE 설정 파일 (IntelliJ, VS Code 등)
+
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+*.suo
+*.ntvs
+*.njsproj
+*.sln
+*.sw?
+
+Gradle 빌드 폴더
+
+build/
+.gradle/

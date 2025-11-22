@@ -1,18 +1,45 @@
 spring:
   datasource:
-    url: jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres
+    url: jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require
     username: postgres.kkfxxteavjukwkrdtycc
     password: chlgmltn04!      # ← 네가 Supabase에서 설정한 DB 비번
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: update # 개발 중엔 update (테이블 자동 수정), 배포 땐 validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     show-sql: true
 
-server:
-  port: 8080
+  # 3. 파일 업로드 용량 제한
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+# 4. AWS S3 설정 (나중에 실제 키 입력 필요)
+  cloud:
+    aws:
+      s3:
+        bucket: todak-recording-bucket # AWS S3 버킷 이름
+        region: ap-northeast-2         # 서울 리전
+      credentials:
+        access-key: PUT_YOUR_AWS_ACCESS_KEY_HERE
+        secret-key: PUT_YOUR_AWS_SECRET_KEY_HERE
+
+# 5. JWT(인증 열쇠) 설정
+jwt:
+  # HS256 알고리즘을 위해 32글자 이상이어야 함
+  secret: this_is_temporary_secret_key_change_it_later_to_be_secure_at_least_32_chars
+  expiration: 3600000 # 1시간 (밀리초 단위)
+
+# 카카오 설정
+kakao:
+  # REST API 키
+  client-id: 837e7a48da1e70b2b5e40f82eeed27cd
+  # 사용자 정보를 가져올 카카오 주소
+  user-info-uri: https://kapi.kakao.com/v2/user/me
+  redirect-uri: http://localhost:3000/oauth/callback/kakao
