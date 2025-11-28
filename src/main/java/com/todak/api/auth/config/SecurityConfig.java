@@ -4,6 +4,7 @@ import com.todak.api.auth.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -18,6 +19,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
+    @Profile("prod")
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -29,8 +31,26 @@ public class SecurityConfig {
                         // 나머지는 다 인증 필요
                         .anyRequest().authenticated()
                 )
-                // 우리가 만든 보안요원(JwtFilter)을 배치
+                // JWT 필터 추가
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+
+    @Bean
+    @Profile("dev")
+    public SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        // 개발 중에는 모든 요청 허용 (프리패스)
+                        .anyRequest().permitAll()
+                );
+
+        // JWT 필터 추가하지 않음
 
         return http.build();
     }
