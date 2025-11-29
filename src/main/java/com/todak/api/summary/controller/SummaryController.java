@@ -8,15 +8,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/summary")
+@RequestMapping("/api.todak.app/v1/summary")
 @RequiredArgsConstructor
 public class SummaryController {
 
     private final SummaryService summaryService;
 
     /**
-     * 요약 생성
-     * content & tags는 AI 서버에서 받아온 결과를 기반으로 생성할 것
+     * 1) 요약 생성 (AI가 준 content, tags 기반)
+     * POST /api/v1/summary/{consultationId}?recordingId=10
      */
     @PostMapping("/{consultationId}")
     public ResponseEntity<SummaryResponseDto> createSummary(
@@ -24,25 +24,27 @@ public class SummaryController {
             @RequestParam(required = false) Long recordingId,
             @RequestBody SummaryCreateRequestDto request
     ) {
-        return ResponseEntity.ok(
-                summaryService.createSummary(
-                        consultationId,
-                        recordingId,
-                        request.getContent(),
-                        request.getTags()
-                )
+        SummaryResponseDto response = summaryService.createSummary(
+                consultationId,
+                recordingId,
+                request.getContent(),
+                request.getTags()
         );
+
+        return ResponseEntity.ok(response);
     }
 
     /**
-     * 특정 진료의 요약 조회
+     * 2) 특정 진료의 최신 요약 조회
+     * GET /api/v1/summary/{consultationId}
      */
     @GetMapping("/{consultationId}")
-    public ResponseEntity<SummaryResponseDto> getSummaryByConsultation(
+    public ResponseEntity<SummaryResponseDto> getLatestSummaryByConsultation(
             @PathVariable Long consultationId
     ) {
-        return ResponseEntity.ok(
-                summaryService.getSummaryByConsultation(consultationId)
-        );
+        SummaryResponseDto response =
+                summaryService.getLatestByConsultation(consultationId);
+
+        return ResponseEntity.ok(response);
     }
 }

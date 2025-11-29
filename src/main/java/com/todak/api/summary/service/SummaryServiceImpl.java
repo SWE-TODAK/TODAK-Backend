@@ -1,4 +1,3 @@
-// src/main/java/com/todak/api/summary/service/SummaryServiceImpl.java
 package com.todak.api.summary.service;
 
 import com.todak.api.summary.dto.response.SummaryResponseDto;
@@ -13,6 +12,9 @@ public class SummaryServiceImpl implements SummaryService {
 
     private final SummaryRepository summaryRepository;
 
+    // -----------------------------
+    // 1) 요약 생성 (AI가 준 content+tags를 그대로 저장)
+    // -----------------------------
     @Override
     public SummaryResponseDto createSummary(Long consultationId,
                                             Long recordingId,
@@ -31,13 +33,30 @@ public class SummaryServiceImpl implements SummaryService {
         return SummaryResponseDto.from(summary);
     }
 
+    // -----------------------------
+    // 2) 진료 기준 최신 Summary 조회
+    // -----------------------------
     @Override
-    public SummaryResponseDto getSummaryByConsultation(Long consultationId) {
+    public SummaryResponseDto getLatestByConsultation(Long consultationId) {
 
-        Summary summary = summaryRepository.findByConsultationId(consultationId)
+        Summary summary = summaryRepository
+                .findTopByConsultationIdOrderByCreatedAtDesc(consultationId)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Summary not found for consultationId=" + consultationId)
-                );
+                        new IllegalArgumentException("Summary not found for consultationId: " + consultationId));
+
+        return SummaryResponseDto.from(summary);
+    }
+
+    // -----------------------------
+    // 3) 녹음 기준 최신 Summary 조회
+    // -----------------------------
+    @Override
+    public SummaryResponseDto getLatestByRecording(Long recordingId) {
+
+        Summary summary = summaryRepository
+                .findTopByRecordingIdOrderByCreatedAtDesc(recordingId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Summary not found for recordingId: " + recordingId));
 
         return SummaryResponseDto.from(summary);
     }
