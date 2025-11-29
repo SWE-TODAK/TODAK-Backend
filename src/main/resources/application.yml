@@ -1,7 +1,4 @@
 spring:
-  profiles:
-    active: dev
-
   datasource:
     url: jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require
     username: postgres.kkfxxteavjukwkrdtycc
@@ -23,15 +20,15 @@ spring:
       max-file-size: 20MB
       max-request-size: 20MB
 
-# 4. AWS S3 설정 (나중에 실제 키 입력 필요)
+  # 4. AWS S3 설정 (나중에 실제 키 입력 필요)
   cloud:
     aws:
       s3:
         bucket: todak-recording-bucket # AWS S3 버킷 이름
         region: ap-northeast-2         # 서울 리전
       credentials:
-        access-key: PUT_YOUR_AWS_ACCESS_KEY_HERE
-        secret-key: PUT_YOUR_AWS_SECRET_KEY_HERE
+        access-key: AKIAX4YLG4JFLCXIBUUI
+        secret-key: T/Ju6bTMH/I336kB1N0pS6ktkifG00JolN0Fu/eE
 
 # 5. JWT(인증 열쇠) 설정
 jwt:

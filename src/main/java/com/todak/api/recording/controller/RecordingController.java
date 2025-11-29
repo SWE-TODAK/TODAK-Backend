@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/recordings")
+@RequestMapping("/api.todak.app/v1/recordings")
 @RequiredArgsConstructor
 public class RecordingController {
 

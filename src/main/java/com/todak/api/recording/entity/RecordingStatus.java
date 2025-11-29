@@ -2,7 +2,6 @@
 package com.todak.api.recording.entity;
 
 public enum RecordingStatus {
-    WAITING,
     AUTHORIZED,
     UPLOADED,
     TRANSCRIBED,
