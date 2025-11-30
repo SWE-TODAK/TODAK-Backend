@@ -27,7 +27,7 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         // 로그인 관련 API는 누구나 접속 가능
-                        .requestMatchers("/kakao/login", "/auth/hospital/login", "/common/app-intro", "/test/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/kakao/login", "/auth/hospital/login","/oauth/callback/kakao","/common/app-intro", "/test/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // 나머지는 다 인증 필요
                         .anyRequest().authenticated()
                 )
