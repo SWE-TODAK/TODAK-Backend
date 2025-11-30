@@ -19,7 +19,7 @@ public class ConsultationController {
     private final ConsultationService consultationService;
 
     /**
-     * 1) 진료 생성 (녹음 시작)
+     * 1) 진료 생성
      * POST /api/v1/consultations/start?appointmentId=10&patientId=uuid
      */
     @PostMapping("/start")

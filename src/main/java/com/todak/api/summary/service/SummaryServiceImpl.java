@@ -22,10 +22,9 @@ public class SummaryServiceImpl implements SummaryService {
     private final AiClient aiClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-      /** ----------------------------------------------------
+    /** ----------------------------------------------------
      *  1. 요약 생성 (Spring → AI 서버)
      * ---------------------------------------------------- */
-                              
     @Override
     public SummaryResponseDto createSummary(SummaryCreateRequestDto req) {
 
@@ -77,7 +76,7 @@ public class SummaryServiceImpl implements SummaryService {
     /** ----------------------------------------------------
      *  2. ConsultationId로 요약 조회
      * ---------------------------------------------------- */
-   @Override
+    @Override
     public SummaryResponseDto getSummaryByConsultation(Long consultationId) {
 
         Summary summary = summaryRepository.findByConsultationId(consultationId)

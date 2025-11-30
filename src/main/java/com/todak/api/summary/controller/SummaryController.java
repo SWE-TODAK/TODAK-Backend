@@ -36,7 +36,7 @@ public class SummaryController {
             @PathVariable Long consultationId
     ) {
         SummaryResponseDto response = summaryService.getSummaryByConsultation(consultationId);
-
+      
         return ResponseEntity.ok(response);
     }
 }

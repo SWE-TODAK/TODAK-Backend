@@ -7,9 +7,8 @@ spring:
     password: chlgmltn04!      # ← 네가 Supabase에서 설정한 DB 비번
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 3     # 연결을 3개까지만 씀 (무료 버전 한계 극복)
-      connection-timeout: 10000
-      validation-timeout: 10000
+      maximum-pool-size: 5
+      minimum-idle: 2
 
   jpa:
     hibernate:
@@ -39,7 +38,7 @@ spring:
 ai:
   mock: true
   server:
-    base-url: http://localhost:8000   # 실제 서버 없어도 됨. 임시 값.
+    base-url: https://todak-ai.onrender.com
 
 
 # 5. JWT(인증 열쇠) 설정

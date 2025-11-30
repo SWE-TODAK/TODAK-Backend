@@ -41,4 +41,6 @@ public interface RecordingService {
      * - 진료 1건당 녹음 1개라고 가정한 구조에서 사용
      */
     Recording getRecordingByConsultation(Long consultationId);
+
+    void authorizeRecording(Long consultationId, String authCode);
 }

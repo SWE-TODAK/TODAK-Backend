@@ -25,6 +25,8 @@ public class AiClient {
     @Value("${ai.server.base-url}")
     private String aiBaseUrl;
 
+    @Value("${ai.server.internal-key}")
+    private String internalKey;
     /**
      * Spring → AI 서버에 Whisper STT 요청
      */
@@ -58,6 +60,8 @@ public class AiClient {
             // -----------------------------
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.set("X-Internal-Key", internalKey);
+
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity =
                     new HttpEntity<>(body, headers);
@@ -125,6 +129,8 @@ public class AiClient {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-Internal-Key", internalKey);
+
 
             HttpEntity<Map<String, Object>> requestEntity =
                     new HttpEntity<>(body, headers);

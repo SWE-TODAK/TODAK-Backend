@@ -132,4 +132,47 @@ public class RecordingServiceImpl implements RecordingService {
         if (fileName == null || !fileName.contains(".")) return null;
         return fileName.substring(fileName.lastIndexOf(".") + 1);
     }
+
+    @Override
+    public void authorizeRecording(Long consultationId, String authCode) {
+
+        // 1) 진료 조회
+        Consultation consultation = consultationRepository.findById(consultationId)
+                .orElseThrow(() -> new IllegalArgumentException("consultation not found: " + consultationId));
+
+        // 2) 병원에서 설정해놓은 녹음 허가 코드랑 비교
+        // 👉 병원 엔티티에 실제 필드명에 맞춰서 수정해줘야 함.
+        String hospitalCode = consultation.getHospital().getHospitalAuthKey();
+        // 예: getRecordingAuthCode() / getRecordingCode() / getAuthCode() 등 실제 네이밍 맞춰서
+
+        if (hospitalCode == null || !hospitalCode.equals(authCode)) {
+            throw new IllegalArgumentException("녹음 허가 코드가 일치하지 않습니다.");
+        }
+
+        // 3) 여기서는 “인증 끝났음”만 기록하면 됨.
+        //    방법 A: 녹음 엔티티 상태로 관리
+        //       - consultationId 기준으로 녹음을 찾고, 없으면 새로 만들고, status=AUTHORIZED
+        //    방법 B: Consultation에 boolean 플래그 저장 (예: isRecordingAuthorized = true)
+
+        // 🔹 방법 A 예시: RecordingStatus.AUTHORIZED 쓰는 방식
+
+        // consultation에 대해 기존 녹음이 있는지 먼저 찾아봄
+        Recording recording = recordingRepository
+                .findFirstByConsultation_ConsultationId(consultationId)
+                .orElse(null);
+
+        if (recording == null) {
+            // 아직 녹음 레코드가 없으면 “허가만 된 상태”로 빈 녹음 하나 만들어둘 수도 있음
+            recording = Recording.builder()
+                    .consultation(consultation)
+                    .hospital(consultation.getHospital())
+                    .status(RecordingStatus.AUTHORIZED) // ✅ 허가만 받은 상태
+                    .build();
+        } else {
+            // 기존 녹음이 있으면 상태만 AUTHORIZED 로 올려줌
+            recording.setStatus(RecordingStatus.AUTHORIZED);
+        }
+
+        recordingRepository.save(recording);
+    }
 }
