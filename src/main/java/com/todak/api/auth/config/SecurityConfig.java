@@ -1,4 +1,4 @@
-package com.todak.api.auth.config; // 패키지가 config여야 합니다!
+package com.todak.api.auth.config;
 
 import com.todak.api.auth.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -26,8 +26,16 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // 로그인 관련 API는 누구나 접속 가능
-                        .requestMatchers("/kakao/login", "/auth/hospital/login","/oauth/callback/kakao","/common/app-intro", "/test/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // ▼ 카카오 콜백 경로(/oauth/callback/kakao)를 명시적으로 허용
+                        .requestMatchers(
+                                "/oauth/callback/kakao",
+                                "/kakao/login",
+                                "/auth/hospital/login",
+                                "/common/app-intro",
+                                "/test/**",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
                         // 나머지는 다 인증 필요
                         .anyRequest().authenticated()
                 )
@@ -46,11 +54,9 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // 개발 중에는 모든 요청 허용 (프리패스)
+                        // 개발 중에는 모든 요청 허용
                         .anyRequest().permitAll()
                 );
-
-        // JWT 필터 추가하지 않음
 
         return http.build();
     }

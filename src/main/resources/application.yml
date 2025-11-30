@@ -58,4 +58,4 @@ kakao:
   redirect-uri: https://todak-backend-705x.onrender.com/oauth/callback/kakao
 
 app:
-  frontend-url: http://localhost:3000/login/success
+  frontend-url: todak::app.kakao
