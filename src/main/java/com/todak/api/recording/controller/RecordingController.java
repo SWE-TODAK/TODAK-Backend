@@ -32,7 +32,6 @@ public class RecordingController {
         return ResponseEntity.ok().build();
     }
 
-
     /** ----------------------------------------------------
      *  1. 녹음 상세 조회
      *  GET /api/recordings/{recordingId}
