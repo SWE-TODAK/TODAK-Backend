@@ -14,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 import java.util.HashMap;
+import org.springframework.core.io.Resource;
 
 @Slf4j
 @Component
@@ -46,15 +47,22 @@ public class AiClient {
             body.add("language", "ko"); // 기본 언어
 
             // 파일 파트
+            // filename 포함된 Resource로 교체
+            InputStreamResource fileResource = new InputStreamResource(file.getInputStream()) {
+                @Override
+                public String getFilename() {
+                    return file.getOriginalFilename(); // 파일명 전달이 핵심!!
+                }
+            };
+
             HttpHeaders fileHeaders = new HttpHeaders();
             fileHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
 
-            HttpEntity<InputStreamResource> fileEntity = new HttpEntity<>(
-                    new InputStreamResource(file.getInputStream()),
-                    fileHeaders
-            );
+            HttpEntity<Resource> fileEntity = new HttpEntity<>(fileResource, fileHeaders);
 
+// multipart body에 추가
             body.add("file", fileEntity);
+
 
             // -----------------------------
             // 최상위 Header
