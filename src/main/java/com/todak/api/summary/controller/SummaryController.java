@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/summaries")
+@RequestMapping("/summaries")
 @RequiredArgsConstructor
 public class SummaryController {
 
@@ -36,7 +36,6 @@ public class SummaryController {
             @PathVariable Long consultationId
     ) {
         SummaryResponseDto response = summaryService.getSummaryByConsultation(consultationId);
-
         return ResponseEntity.ok(response);
     }
 }

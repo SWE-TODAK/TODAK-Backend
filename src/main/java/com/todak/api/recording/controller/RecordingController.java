@@ -12,7 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/recordings")
+@RequestMapping("/recordings")
 public class RecordingController {
 
     private final RecordingService recordingService;
@@ -32,6 +32,7 @@ public class RecordingController {
         return ResponseEntity.ok().build();
     }
 
+    /** ----------------------------------------------------
      *  1. 녹음 상세 조회
      *  GET /api/recordings/{recordingId}
      * ---------------------------------------------------- */
