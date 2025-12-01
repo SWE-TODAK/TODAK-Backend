@@ -54,8 +54,7 @@ kakao:
   client-id: 837e7a48da1e70b2b5e40f82eeed27cd
   # 사용자 정보를 가져올 카카오 주소
   user-info-uri: https://kapi.kakao.com/v2/user/me
-  #redirect-url: http://localhost:8080/oauth/callback/kakao
-  redirect-uri: https://todak-backend-705x.onrender.com/oauth/callback/kakao
+  redirect-uri: todak://app.kakao
 
 app:
   frontend-url: todak://kakao-login
