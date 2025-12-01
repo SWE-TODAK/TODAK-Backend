@@ -5,7 +5,6 @@ import com.todak.api.infra.ai.dto.AiSummaryResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -15,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 import java.util.HashMap;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.ByteArrayResource;
 
 @Slf4j
 @Component
@@ -45,22 +45,25 @@ public class AiClient {
             body.add("consultationId", consultationId.toString());
             body.add("language", "ko"); // 기본 언어
 
+            // -----------------------------
             // 파일 파트
-            // filename 포함된 Resource로 교체
-            InputStreamResource fileResource = new InputStreamResource(file.getInputStream()) {
+            // -----------------------------
+            byte[] fileBytes = file.getBytes();  // 스트림 1회 읽기 → byte[] 로 저장
+
+            ByteArrayResource fileResource = new ByteArrayResource(fileBytes) {
                 @Override
                 public String getFilename() {
-                    return file.getOriginalFilename(); // 파일명 전달이 핵심!!
+                    return file.getOriginalFilename(); // 반드시 파일명 override 해야 multipart로 보냄
                 }
             };
 
             HttpHeaders fileHeaders = new HttpHeaders();
             fileHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
 
-            HttpEntity<Resource> fileEntity = new HttpEntity<>(fileResource, fileHeaders);
+            HttpEntity<ByteArrayResource> fileEntity =
+                    new HttpEntity<>(fileResource, fileHeaders);
 
-// multipart body에 추가
-            body.add("file", fileEntity);
+            body.add("file", fileEntity); // multipart에 파일 추가
 
 
             // -----------------------------
