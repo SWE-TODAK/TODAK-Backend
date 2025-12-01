@@ -34,9 +34,11 @@ public class AuthController {
     }
     @GetMapping("/oauth/callback/kakao")
     public void kakaoCallback(@RequestParam String code, HttpServletResponse response) throws IOException {
-        // 1. 카카오 인가 코드로 백엔드 자체 토큰(JWT) 발급
-        TokenResponse token = authService.kakaoLogin(code);
-        response.sendRedirect(frontendUrl + "?accessToken=" + token.getAccessToken());
+        // 1. 카카오가 준 인가 코드(code)를 받음
+        // 2. 앱의 딥링크(todak://kakao-login) 뒤에 code를 붙여서 리다이렉트
+        //    -> 앱이 켜지면서 이 code를 낚아채게 됨
+        String appDeepLink = "todak://kakao-login?code=" + code;
+        response.sendRedirect(appDeepLink);
     }
 
 
