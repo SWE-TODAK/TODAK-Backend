@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,6 +18,20 @@ public class RecordingController {
     private final RecordingService recordingService;
 
     /** ----------------------------------------------------
+     *  0. 녹음 인증 (병원 인증 코드 확인)
+     *  POST /api/recordings/{consultationId}/authorize
+     *  Body: { "authCode": "xxxx" }
+     * ---------------------------------------------------- */
+    @PostMapping("/{consultationId}/authorize")
+    public ResponseEntity<Void> authorizeRecording(
+            @PathVariable Long consultationId,
+            @RequestBody Map<String, String> req
+    ) {
+        String authCode = req.get("authCode");
+        recordingService.authorizeRecording(consultationId, authCode);
+        return ResponseEntity.ok().build();
+    }
+
      *  1. 녹음 상세 조회
      *  GET /api/recordings/{recordingId}
      * ---------------------------------------------------- */

@@ -42,7 +42,6 @@ ai:
     url: https://todak-ai.onrender.com
     key: ${INTERNAL_API_KEY}
 
-
 # 5. JWT(인증 열쇠) 설정
 jwt:
   # HS256 알고리즘을 위해 32글자 이상이어야 함

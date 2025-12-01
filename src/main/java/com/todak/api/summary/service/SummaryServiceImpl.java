@@ -10,6 +10,7 @@ import com.todak.api.summary.entity.Summary;
 import com.todak.api.summary.repository.SummaryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
@@ -22,11 +23,11 @@ public class SummaryServiceImpl implements SummaryService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /** ----------------------------------------------------
-     * 1. 요약 생성 (Spring → AI 서버)
+     *  1. 요약 생성 (Spring → AI 서버)
      * ---------------------------------------------------- */
     @Override
     public SummaryResponseDto createSummary(SummaryCreateRequestDto req) {
-        // ... (기존 코드 그대로 유지) ...
+
         // 1) Recording 조회
         Recording recording = recordingRepository.findById(req.getRecordingId())
                 .orElseThrow(() ->
@@ -57,41 +58,30 @@ public class SummaryServiceImpl implements SummaryService {
             throw new RuntimeException("JSON 직렬화 실패", e);
         }
 
+
         // 3) DB 저장
         Summary summary = Summary.builder()
                 .consultationId(consultationId)
                 .recordingId(recordingId)
-                .content(contentJson)
+                .content(contentJson)   // ← contentJson 사용
                 .tags(tagsJson)
                 .build();
 
         summaryRepository.save(summary);
 
+        // 4) 응답 DTO로 변환
         return SummaryResponseDto.from(summary);
     }
 
     /** ----------------------------------------------------
-     * 2. ConsultationId로 요약 조회 (이름 수정됨!)
+     *  2. ConsultationId로 요약 조회
      * ---------------------------------------------------- */
     @Override
-    // [수정됨] getSummaryByConsultation -> getLatestByConsultation
-    public SummaryResponseDto getLatestByConsultation(Long consultationId) {
+    public SummaryResponseDto getSummaryByConsultation(Long consultationId) {
 
         Summary summary = summaryRepository.findByConsultationId(consultationId)
                 .orElseThrow(() ->
                         new IllegalArgumentException("Summary not found for consultation: " + consultationId));
-
-        return SummaryResponseDto.from(summary);
-    }
-
-    /** ----------------------------------------------------
-     * 3. RecordingId로 요약 조회 (새로 추가됨!)
-     * ---------------------------------------------------- */
-    @Override
-    public SummaryResponseDto getLatestByRecording(Long recordingId) {
-        Summary summary = summaryRepository.findFirstByRecordingId(recordingId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Summary not found for recording: " + recordingId));
 
         return SummaryResponseDto.from(summary);
     }

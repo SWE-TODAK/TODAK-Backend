@@ -11,5 +11,5 @@ public interface SummaryRepository extends JpaRepository<Summary, Long> {
     Optional<Summary> findByConsultationId(Long consultationId);
 
     Optional<Summary> findFirstByRecordingId(Long recordingId);
-
 }
+
