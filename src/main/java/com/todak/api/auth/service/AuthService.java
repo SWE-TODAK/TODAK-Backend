@@ -3,8 +3,11 @@ package com.todak.api.auth.service;
 import com.todak.api.auth.dto.response.TokenResponse;
 import com.todak.api.auth.jwt.JwtTokenProvider;
 import com.todak.api.infra.kakao.KakaoAuthService;
+import com.todak.api.user.entity.User;
+import com.todak.api.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -12,6 +15,7 @@ public class AuthService {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final KakaoAuthService kakaoAuthService;
+    private final UserRepository userRepository;
 
     // 병원(관리자) 로그인
     public TokenResponse hospitalLogin(String loginId, String password) {
@@ -25,6 +29,7 @@ public class AuthService {
     /**
      * 카카오 로그인 (앱에서 받은 AccessToken으로 로그인 처리)
      */
+    @Transactional
     public TokenResponse kakaoLogin(String kakaoAccessToken) {
 
         // 1. 토큰이 비어있는지 확인 (안전장치)
@@ -33,6 +38,12 @@ public class AuthService {
         }
 
         Long kakaoUserId = kakaoAuthService.getKakaoUserId(kakaoAccessToken);
+
+        User user = User.builder()
+                .kakaoId(kakaoUserId)
+                .role("USER")
+                .build();
+        userRepository.save(user);
 
         String accessToken = jwtTokenProvider.createToken(kakaoUserId, "USER");
 

@@ -8,9 +8,11 @@ import com.todak.api.appointment.entity.AppointmentStatus;
 import com.todak.api.appointment.repository.AppointmentRepository;
 import com.todak.api.hospital.entity.Hospital;
 import com.todak.api.hospital.entity.Doctor;
-import com.todak.api.hospital.repository.DepartmentRepository;
 import com.todak.api.hospital.repository.DoctorRepository;
 import com.todak.api.hospital.repository.HospitalRepository;
+import com.todak.api.user.entity.User;
+import com.todak.api.user.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,12 +28,21 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final HospitalRepository hospitalRepository;
-    private final DepartmentRepository departmentRepository;
     private final DoctorRepository doctorRepository;
+    private final UserRepository userRepository;
+
+    /** kakaoId → User UUID 변환 */
+    private UUID getUserUuid(Long kakaoId) {
+        User user = userRepository.findByKakaoId(kakaoId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return user.getUserUuid();
+    }
 
     /** 1. 예약 생성 */
     @Override
-    public AppointmentResponseDto create(AppointmentCreateRequestDto request) {
+    public AppointmentResponseDto create(Long kakaoId, AppointmentCreateRequestDto request) {
+
+        UUID patientUuid = getUserUuid(kakaoId);
 
         Hospital hospital = hospitalRepository.findById(request.getHospitalId())
                 .orElseThrow(() -> new IllegalArgumentException("hospital not found"));
@@ -43,7 +54,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         Appointment appointment = Appointment.builder()
-                .patientId(UUID.fromString(request.getPatientId()))
+                .patientId(patientUuid)
                 .hospital(hospital)
                 .doctor(doctor)
                 .datetime(request.getDatetime().atOffset(ZoneOffset.of("+09:00")))
@@ -57,12 +68,14 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     /** 2. 예약 취소 */
     @Override
-    public void cancel(AppointmentCancelRequest request) {
+    public void cancel(Long kakaoId, AppointmentCancelRequest request) {
+
+        UUID patientUuid = getUserUuid(kakaoId);
 
         Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new IllegalArgumentException("appointment not found"));
 
-        if (!appointment.getPatientId().equals(request.getPatientId())) {
+        if (!appointment.getPatientId().equals(patientUuid)) {
             throw new IllegalArgumentException("invalid patient");
         }
 
@@ -72,8 +85,10 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     /** 3. 나의 전체 예약 */
     @Override
-    public List<AppointmentResponseDto> getMyAppointments(UUID patientId) {
-        return appointmentRepository.findByPatientId(patientId)
+    public List<AppointmentResponseDto> getMyAppointments(Long kakaoId) {
+        UUID patientUuid = getUserUuid(kakaoId);
+
+        return appointmentRepository.findByPatientId(patientUuid)
                 .stream()
                 .map(AppointmentResponseDto::from)
                 .toList();
@@ -81,19 +96,21 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     /** 4. 오늘 나의 예약 */
     @Override
-    public AppointmentResponseDto getTodayMyAppointment(UUID patientId) {
+    public AppointmentResponseDto getTodayMyAppointment(Long kakaoId) {
+        UUID patientUuid = getUserUuid(kakaoId);
+
         OffsetDateTime now = OffsetDateTime.now();
 
         Appointment appt = appointmentRepository
-                .findTodayAppointment(patientId, now.toLocalDate())
+                .findTodayAppointment(patientUuid, now.toLocalDate())
                 .orElse(null);
 
-        return appt != null ? AppointmentResponseDto.from(appt) : null;
+        return (appt != null) ? AppointmentResponseDto.from(appt) : null;
     }
 
     /** 5. 병원 전체 예약 */
     @Override
-    public List<AppointmentResponseDto> getAppointmentsByHospital(Long hospitalId) {
+    public List<AppointmentResponseDto> getAppointmentsByHospital(Long kakaoId, Long hospitalId) {
         return appointmentRepository.findByHospital_HospitalId(hospitalId)
                 .stream()
                 .map(AppointmentResponseDto::from)
@@ -102,7 +119,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     /** 6. 병원 특정 날짜 예약 */
     @Override
-    public List<AppointmentResponseDto> getAppointmentsByHospitalAndDate(Long hospitalId, String dateStr) {
+    public List<AppointmentResponseDto> getAppointmentsByHospitalAndDate(Long kakaoId, Long hospitalId, String dateStr) {
 
         OffsetDateTime date = OffsetDateTime.parse(
                 dateStr + "T00:00:00+09:00",

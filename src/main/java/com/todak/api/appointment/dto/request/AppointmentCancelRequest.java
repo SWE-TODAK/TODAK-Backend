@@ -10,5 +10,4 @@ import java.util.UUID;
 @Builder
 public class AppointmentCancelRequest {
     private Long appointmentId;
-    private UUID patientId;
 }

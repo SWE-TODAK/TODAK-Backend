@@ -1,4 +1,3 @@
-// src/main/java/com/todak/api/appointment/entity/Appointment.java
 package com.todak.api.appointment.entity;
 
 import com.todak.api.hospital.entity.Hospital;

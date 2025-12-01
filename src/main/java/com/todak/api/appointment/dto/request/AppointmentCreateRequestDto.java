@@ -10,8 +10,6 @@ import java.time.LocalDateTime;
 @Builder
 public class AppointmentCreateRequestDto {
 
-    private String patientId;       // UUID (string으로 받는게 맞음)
-
     private Long hospitalId;        // 필수
 
     private Long doctorId;          // 선택
