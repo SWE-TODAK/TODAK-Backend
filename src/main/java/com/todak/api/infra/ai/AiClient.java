@@ -28,7 +28,6 @@ public class AiClient {
 
     @Value("${ai.server.internal-key}")
     private String internalKey;
-
     /**
      * Spring → AI 서버에 Whisper STT 요청
      */
