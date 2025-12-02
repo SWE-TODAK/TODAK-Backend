@@ -1,10 +1,12 @@
 package com.todak.api.consultation.service;
 
+import com.todak.api.appointment.repository.AppointmentRepository;
 import com.todak.api.consultation.dto.response.*;
 import com.todak.api.consultation.dto.request.*;
 import com.todak.api.consultation.entity.Consultation;
 import com.todak.api.consultation.repository.ConsultationRepository;
 import com.todak.api.recording.entity.Recording;
+import com.todak.api.appointment.entity.Appointment;
 import com.todak.api.recording.repository.RecordingRepository;
 import com.todak.api.summary.entity.Summary;
 import com.todak.api.summary.repository.SummaryRepository;
@@ -24,6 +26,7 @@ import java.util.*;
 public class ConsultationServiceImpl implements ConsultationService {
 
     private final ConsultationRepository consultationRepository;
+    private final AppointmentRepository appointmentRepository;
     private final RecordingRepository recordingRepository;
     private final SummaryRepository summaryRepository;
     private final HospitalRepository hospitalRepository;
@@ -39,10 +42,18 @@ public class ConsultationServiceImpl implements ConsultationService {
         Hospital hospital = hospitalRepository.findById(1L)
                 .orElseThrow(() -> new IllegalArgumentException("Hospital not found"));
 
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+
+        // (중요) 예약의 환자와 요청한 환자가 다르면 차단
+        if (!appointment.getPatient().getUserUuid().equals(user.getUserUuid())) {
+            throw new IllegalStateException("User is not the owner of this appointment");
+        }
+
         Consultation consultation = Consultation.builder()
-                .appointmentId(appointmentId)
+                .appointment(appointment)
                 .hospital(hospital)
-                .patient(user)   // 🔥 UUID 대신 User 엔티티 통째로 저장
+                .patient(user)
                 .startedAt(OffsetDateTime.now())
                 .build();
 
