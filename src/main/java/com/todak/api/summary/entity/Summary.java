@@ -27,10 +27,6 @@ public class Summary {
     @Column(name = "recording_id", nullable = false)
     private Long recordingId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id", referencedColumnName = "user_uuid", nullable = false)
-    private User patient;
-
     /**
      * 요약 결과 텍스트 전체
      * (JSON X, 하나의 plain text)
