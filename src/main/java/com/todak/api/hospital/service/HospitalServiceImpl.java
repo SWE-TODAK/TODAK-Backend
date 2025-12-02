@@ -11,11 +11,15 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Service
 @RequiredArgsConstructor
 public class HospitalServiceImpl implements HospitalService {
 
     private final HospitalRepository hospitalRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public List<HospitalListResponseDto> searchHospitals(String search, String department) {
@@ -24,14 +28,11 @@ public class HospitalServiceImpl implements HospitalService {
 
         if (search != null && department != null) {
             hospitals = hospitalRepository.findByNameContainingIgnoreCaseAndDepartment(search, department);
-        }
-        else if (search != null) {
+        } else if (search != null) {
             hospitals = hospitalRepository.findByNameContainingIgnoreCase(search);
-        }
-        else if (department != null) {
+        } else if (department != null) {
             hospitals = hospitalRepository.findByDepartmentName(department);
-        }
-        else {
+        } else {
             hospitals = hospitalRepository.findAll();
         }
 
@@ -119,23 +120,33 @@ public class HospitalServiceImpl implements HospitalService {
                 .build();
     }
 
-    // DB의 JSONB(open_hours) → DTO 변환
     private AvailableHoursDto toAvailableHoursDto(Object jsonbObj) {
 
         if (jsonbObj == null)
             return null;
 
-        // PostgreSQL JSONB는 Map<String,String> 형태로 들어옴
-        Map<String, String> map = (Map<String, String>) jsonbObj;
+        try {
+            // 1. JSONB가 문자열로 들어오므로 그대로 String으로 변환
+            String jsonStr = jsonbObj.toString();
 
-        return AvailableHoursDto.builder()
-                .mon(map.get("mon"))
-                .tue(map.get("tue"))
-                .wed(map.get("wed"))
-                .thu(map.get("thu"))
-                .fri(map.get("fri"))
-                .sat(map.get("sat"))
-                .sun(map.get("sun"))
-                .build();
+            // 2. JSON 문자열을 Map으로 변환
+            Map<String, String> map = objectMapper.readValue(
+                    jsonStr, new TypeReference<Map<String, String>>() {
+                    }
+            );
+
+            return AvailableHoursDto.builder()
+                    .mon(map.get("mon"))
+                    .tue(map.get("tue"))
+                    .wed(map.get("wed"))
+                    .thu(map.get("thu"))
+                    .fri(map.get("fri"))
+                    .sat(map.get("sat"))
+                    .sun(map.get("sun"))
+                    .build();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse open_hours JSON", e);
+        }
     }
 }
