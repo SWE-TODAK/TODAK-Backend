@@ -1,6 +1,5 @@
 package com.todak.api.summary.entity;
 
-import com.todak.api.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -26,10 +25,6 @@ public class Summary {
 
     @Column(name = "recording_id", nullable = false)
     private Long recordingId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id", referencedColumnName = "user_uuid", nullable = false)
-    private User patient;
 
     /**
      * 요약 결과 텍스트 전체
