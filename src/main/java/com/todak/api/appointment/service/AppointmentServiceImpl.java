@@ -1,178 +1,135 @@
-package com.todak.api.recording.service;
+package com.todak.api.appointment.service;
 
-import com.todak.api.consultation.entity.Consultation;
-import com.todak.api.consultation.repository.ConsultationRepository;
-import com.todak.api.infra.ai.AiClient;
-import com.todak.api.infra.ai.dto.AiSttResponseDto;
-import com.todak.api.infra.s3.S3UploaderService;
-import com.todak.api.recording.dto.response.RecordingDetailResponseDto;
-import com.todak.api.recording.entity.Recording;
-import com.todak.api.recording.entity.RecordingStatus;
-import com.todak.api.recording.repository.RecordingRepository;
+import com.todak.api.appointment.dto.request.AppointmentCreateRequestDto;
+import com.todak.api.appointment.dto.request.AppointmentCancelRequest;
+import com.todak.api.appointment.dto.response.AppointmentResponseDto;
+import com.todak.api.appointment.entity.Appointment;
+import com.todak.api.appointment.entity.AppointmentStatus;
+import com.todak.api.appointment.repository.AppointmentRepository;
+import com.todak.api.hospital.entity.Hospital;
+import com.todak.api.hospital.entity.Doctor;
+import com.todak.api.hospital.repository.DoctorRepository;
+import com.todak.api.hospital.repository.HospitalRepository;
+import com.todak.api.user.entity.User;
+import com.todak.api.user.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class RecordingServiceImpl implements RecordingService {
+public class AppointmentServiceImpl implements AppointmentService {
 
-    private final RecordingRepository recordingRepository;
-    private final ConsultationRepository consultationRepository;
-    private final S3UploaderService s3Uploader;
-    private final AiClient aiClient;
+    private final AppointmentRepository appointmentRepository;
+    private final HospitalRepository hospitalRepository;
+    private final DoctorRepository doctorRepository;
+    private final UserRepository userRepository;
 
-    /** ----------------------------------------------------
-     *  1. 녹음 상세 조회
-     * ---------------------------------------------------- */
-    @Override
-    public RecordingDetailResponseDto getRecording(Long id) {
-        Recording r = recordingRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Recording not found: " + id));
-
-        return RecordingDetailResponseDto.from(r);
+    /** kakaoId → User 변환 */
+    private User getUser(Long kakaoId) {
+        return userRepository.findByKakaoId(kakaoId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
-    /** ----------------------------------------------------
-     *  2. 녹음 파일 업로드 (클라이언트 → Spring)
-     * ---------------------------------------------------- */
+    /** 1. 예약 생성 */
     @Override
-    public RecordingDetailResponseDto uploadRecording(Long consultationId, MultipartFile file) {
+    public AppointmentResponseDto create(Long kakaoId, AppointmentCreateRequestDto request) {
 
-        Consultation consultation = consultationRepository.findById(consultationId)
-                .orElseThrow(() -> new IllegalArgumentException("consultation not found: " + consultationId));
+        User patient = getUser(kakaoId);
 
-        // S3 업로드 (URL 아니라 key 반환)
-        String key = s3Uploader.upload(file, "recordings");
+        Hospital hospital = hospitalRepository.findById(request.getHospitalId())
+                .orElseThrow(() -> new IllegalArgumentException("Hospital not found"));
 
-        // 확장자 파싱
-        String extension = extractExtension(file.getOriginalFilename());
+        Doctor doctor = null;
+        if (request.getDoctorId() != null) {
+            doctor = doctorRepository.findById(request.getDoctorId()).orElse(null);
+        }
 
-        // Recording 생성
-        Recording recording = Recording.builder()
-                .consultation(consultation)
-                .hospital(consultation.getHospital())
-                .filePath(key)   // key 저장
-                .format(extension)
-                .fileSizeMb((double) file.getSize() / (1024 * 1024))
-                .status(RecordingStatus.UPLOADED)
+        Appointment appointment = Appointment.builder()
+                .patient(patient)   // ⭐ 핵심 수정 (UUID X → User 엔티티 넣기)
+                .hospital(hospital)
+                .doctor(doctor)
+                .datetime(request.getDatetime().atOffset(ZoneOffset.of("+09:00")))
+                .status(AppointmentStatus.REQUESTED)
                 .build();
 
-        recordingRepository.save(recording);
+        appointmentRepository.save(appointment);
 
-        return RecordingDetailResponseDto.from(recording);
+        return AppointmentResponseDto.from(appointment);
     }
 
-    /** ----------------------------------------------------
-     *  3. STT 실행 (Spring → AI 서버)
-     * ---------------------------------------------------- */
+    /** 2. 예약 취소 */
     @Override
-    public void runStt(Long recordingId) {
+    public void cancel(Long kakaoId, AppointmentCancelRequest request) {
 
-        Recording recording = recordingRepository.findById(recordingId)
-                .orElseThrow(() -> new IllegalArgumentException("Recording not found: " + recordingId));
+        User user = getUser(kakaoId);
 
-        // S3에서 key 기반 다운로드
-        MultipartFile audioFile = s3Uploader.downloadAsMultipartFileByKey(recording.getFilePath());
+        Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
+                .orElseThrow(() -> new IllegalArgumentException("appointment not found"));
 
-        // AI 서버에 Whisper STT 요청
-        AiSttResponseDto aiRes = aiClient.requestStt(
-                recording.getRecordingId(),
-                recording.getConsultation().getConsultationId(),
-                audioFile
-        );
-
-        // 결과 저장
-        recording.setTranscript(aiRes.getData().getTranscript());
-        recording.setDurationSeconds(aiRes.getData().getDuration());
-        recording.setStatus(RecordingStatus.TRANSCRIBED);
-
-        recordingRepository.save(recording);
-    }
-
-    /** ----------------------------------------------------
-     *  4. transcript 직접 수정
-     * ---------------------------------------------------- */
-    @Override
-    public void updateTranscript(Long id, String transcript) {
-        Recording r = recordingRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Recording not found"));
-
-        r.setTranscript(transcript);
-        r.setStatus(RecordingStatus.TRANSCRIBED);
-
-        recordingRepository.save(r);
-    }
-
-    /** ----------------------------------------------------
-     *  5. 상태 변경
-     * ---------------------------------------------------- */
-    @Override
-    public void updateStatus(Long id, RecordingStatus status) {
-        Recording r = recordingRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Recording not found"));
-
-        r.setStatus(status);
-        recordingRepository.save(r);
-    }
-
-    /** ----------------------------------------------------
-     *  6. Consultation → Recording 조회
-     * ---------------------------------------------------- */
-    @Override
-    public Recording getRecordingByConsultation(Long consultationId) {
-        return recordingRepository.findFirstByConsultation_ConsultationId(consultationId)
-                .orElseThrow(() -> new IllegalArgumentException("recording not found for consultation: " + consultationId));
-    }
-
-    /** ----------------------------------------------------
-     *  Private helpers
-     * ---------------------------------------------------- */
-    private String extractExtension(String fileName) {
-        if (fileName == null || !fileName.contains(".")) return null;
-        return fileName.substring(fileName.lastIndexOf(".") + 1);
-    }
-
-    @Override
-    public void authorizeRecording(Long consultationId, String authCode) {
-
-        // 1) 진료 조회
-        Consultation consultation = consultationRepository.findById(consultationId)
-                .orElseThrow(() -> new IllegalArgumentException("consultation not found: " + consultationId));
-
-        // 2) 병원에서 설정해놓은 녹음 허가 코드랑 비교
-        // 👉 병원 엔티티에 실제 필드명에 맞춰서 수정해줘야 함.
-        String hospitalCode = consultation.getHospital().getHospitalAuthKey();
-        // 예: getRecordingAuthCode() / getRecordingCode() / getAuthCode() 등 실제 네이밍 맞춰서
-
-        if (hospitalCode == null || !hospitalCode.equals(authCode)) {
-            throw new IllegalArgumentException("녹음 허가 코드가 일치하지 않습니다.");
+        if (!appointment.getPatient().getUserUuid().equals(user.getUserUuid())) {
+            throw new IllegalArgumentException("invalid patient");
         }
 
-        // 3) 여기서는 “인증 끝났음”만 기록하면 됨.
-        //    방법 A: 녹음 엔티티 상태로 관리
-        //       - consultationId 기준으로 녹음을 찾고, 없으면 새로 만들고, status=AUTHORIZED
-        //    방법 B: Consultation에 boolean 플래그 저장 (예: isRecordingAuthorized = true)
+        appointment.setStatus(AppointmentStatus.CANCELLED);
+        appointmentRepository.save(appointment);
+    }
 
-        // 🔹 방법 A 예시: RecordingStatus.AUTHORIZED 쓰는 방식
+    /** 3. 나의 전체 예약 */
+    @Override
+    public List<AppointmentResponseDto> getMyAppointments(Long kakaoId) {
 
-        // consultation에 대해 기존 녹음이 있는지 먼저 찾아봄
-        Recording recording = recordingRepository
-                .findFirstByConsultation_ConsultationId(consultationId)
+        User user = getUser(kakaoId);
+
+        return appointmentRepository.findByPatient(user)
+                .stream()
+                .map(AppointmentResponseDto::from)
+                .toList();
+    }
+
+    /** 4. 오늘 나의 예약 */
+    @Override
+    public AppointmentResponseDto getTodayMyAppointment(Long kakaoId) {
+
+        User user = getUser(kakaoId);
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        Appointment appt = appointmentRepository
+                .findTodayAppointment(user, now.toLocalDate())
                 .orElse(null);
 
-        if (recording == null) {
-            // 아직 녹음 레코드가 없으면 “허가만 된 상태”로 빈 녹음 하나 만들어둘 수도 있음
-            recording = Recording.builder()
-                    .consultation(consultation)
-                    .hospital(consultation.getHospital())
-                    .status(RecordingStatus.AUTHORIZED) // ✅ 허가만 받은 상태
-                    .build();
-        } else {
-            // 기존 녹음이 있으면 상태만 AUTHORIZED 로 올려줌
-            recording.setStatus(RecordingStatus.AUTHORIZED);
-        }
+        return (appt != null) ? AppointmentResponseDto.from(appt) : null;
+    }
 
-        recordingRepository.save(recording);
+    /** 5. 병원 전체 예약 */
+    @Override
+    public List<AppointmentResponseDto> getAppointmentsByHospital(Long kakaoId, Long hospitalId) {
+
+        // 이 API는 user 기반 조건 필요 없음
+        return appointmentRepository.findByHospital_HospitalId(hospitalId)
+                .stream()
+                .map(AppointmentResponseDto::from)
+                .toList();
+    }
+
+    /** 6. 병원 특정 날짜 예약 */
+    @Override
+    public List<AppointmentResponseDto> getAppointmentsByHospitalAndDate(Long kakaoId, Long hospitalId, String dateStr) {
+
+        OffsetDateTime date = OffsetDateTime.parse(
+                dateStr + "T00:00:00+09:00",
+                DateTimeFormatter.ISO_OFFSET_DATE_TIME
+        );
+
+        return appointmentRepository.findByHospitalIdAndDate(hospitalId, date.toLocalDate())
+                .stream()
+                .map(AppointmentResponseDto::from)
+                .toList();
     }
 }
