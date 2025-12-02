@@ -16,7 +16,7 @@
 
 ## Architecture
 
-<img width="2254" height="1274" alt="supabase-schema-kkfxxteavjukwkrdtycc (1)" src="https://github.com/user-attachments/assets/6e725b2a-9dbf-4729-bfe9-f34058ecdd3a" />
+<img width="2376" height="1316" alt="supabase-schema-kkfxxteavjukwkrdtycc (2)" src="https://github.com/user-attachments/assets/2547ec87-de2e-4176-96db-ffd6c0e8bfa8" />
 
 
 ---
