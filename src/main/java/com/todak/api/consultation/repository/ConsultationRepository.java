@@ -2,6 +2,7 @@ package com.todak.api.consultation.repository;
 
 import com.todak.api.consultation.entity.Consultation;
 import com.todak.api.user.entity.User;
+import com.todak.api.appointment.entity.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.OffsetDateTime;
@@ -31,5 +32,5 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
     /**
      * 예약 ID로 조회 (예약 → 진료 연결 목적)
      */
-    List<Consultation> findByAppointmentId(Long appointmentId);
+    List<Consultation> findByAppointmentId(Appointment appointmentId);
 }
