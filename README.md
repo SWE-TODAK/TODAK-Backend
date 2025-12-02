@@ -21,7 +21,7 @@
 ---
 
 ## Project Structure
-bash          
+```bash         
 src/main/java/com.todak.api
  ├─ appointment      # 진료 날짜·시간 선택 및 예약 후보 조회
  ├─ auth             # 로그인/인증 (추후 확장)
@@ -36,6 +36,7 @@ src/main/java/com.todak.api
  ├─ recording        # 녹음 인증·업로드·STT 요청 처리
  ├─ summary          # STT 결과 요약 도메인
  └─ user             # 사용자 관리
+```
 
  ---
  
