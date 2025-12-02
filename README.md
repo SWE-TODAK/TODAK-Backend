@@ -55,6 +55,16 @@ src/main/java/com.todak.api
 
 ### 🔐 Authentication
 
+1) 카카오 로그인 (User Login)
+   - **토큰 교환 & 유저 정보**: 백엔드는 프론트가 인가 코드를 사용해 카카오 서버에서 액세스 토큰을 받아서 주면, 이를 통해 고유 유저 ID를 조회
+   - **자동 회원가입/로그인**: DB 조회 후 신규 유저면 자동 회원가입, 기존 유저면 로그인 처리
+   - **JWT 발급**: 서비스 전용 JWT(Access Token)을 생성하여 클라이언트에 반환
+
+2) API 요청 인증 (JWT Verification)
+   - **헤더 검사**: API 요청 시 헤더의 `Authorization: Bearer {Token}` 확인
+   - **필터링**: `JwtAuthenticationFilter`에서 토큰의 유효성 및 만료 여부 검증
+   - **인증 처리**: 검증 통과 시 `SecurityContext`에 인증 정보를 저장하여 API 접근 허용
+
 
 
 ### 🎙 Recording & Summary Pipeline
