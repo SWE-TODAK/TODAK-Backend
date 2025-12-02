@@ -39,11 +39,13 @@ public class AuthService {
 
         Long kakaoUserId = kakaoAuthService.getKakaoUserId(kakaoAccessToken);
 
-        User user = User.builder()
-                .kakaoId(kakaoUserId)
-                .role("USER")
-                .build();
-        userRepository.save(user);
+        User user = userRepository.findByKakaoId(kakaoUserId)
+                .orElseGet(() -> userRepository.save(
+                        User.builder()
+                                .kakaoId(kakaoUserId)
+                                .role("USER")    // 기본 권한 설정
+                                .build()
+                ));
 
         String accessToken = jwtTokenProvider.createToken(kakaoUserId, "USER");
 
