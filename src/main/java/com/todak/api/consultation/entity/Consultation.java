@@ -43,7 +43,8 @@ public class Consultation {
      * 환자 UUID (users 테이블의 PK)
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id", referencedColumnName = "user_uuid", nullable = false)
+//    @JoinColumn(name = "patient_id", referencedColumnName = "user_uuid", nullable = false)
+    @JoinColumn(name = "patient_id", nullable = false)
     private User patient;
 
     /**
