@@ -2,6 +2,7 @@ package com.todak.api.recording.service;
 
 import com.todak.api.consultation.entity.Consultation;
 import com.todak.api.consultation.repository.ConsultationRepository;
+import com.todak.api.user.repository.UserRepository;
 import com.todak.api.infra.ai.AiClient;
 import com.todak.api.infra.ai.dto.AiSttResponseDto;
 import com.todak.api.infra.s3.S3UploaderService;
@@ -9,6 +10,7 @@ import com.todak.api.recording.dto.response.RecordingDetailResponseDto;
 import com.todak.api.recording.entity.Recording;
 import com.todak.api.recording.entity.RecordingStatus;
 import com.todak.api.recording.repository.RecordingRepository;
+import com.todak.api.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +23,7 @@ public class RecordingServiceImpl implements RecordingService {
     private final ConsultationRepository consultationRepository;
     private final S3UploaderService s3Uploader;
     private final AiClient aiClient;
+    private final UserRepository userRepository;
 
     /** ----------------------------------------------------
      *  1. 녹음 상세 조회
@@ -37,22 +40,28 @@ public class RecordingServiceImpl implements RecordingService {
      *  2. 녹음 파일 업로드 (클라이언트 → Spring)
      * ---------------------------------------------------- */
     @Override
-    public RecordingDetailResponseDto uploadRecording(Long consultationId, MultipartFile file) {
+    public RecordingDetailResponseDto uploadRecording(Long kakaoId, Long consultationId, MultipartFile file) {
 
+
+        // 🔥 patient 찾기 (NOT NULL)
+        User patient = userRepository.findByKakaoId(kakaoId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // 🔥 consultation 조회
         Consultation consultation = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new IllegalArgumentException("consultation not found: " + consultationId));
 
-        // S3 업로드 (URL 아니라 key 반환)
+        // 🔥 s3 업로드
         String key = s3Uploader.upload(file, "recordings");
 
-        // 확장자 파싱
         String extension = extractExtension(file.getOriginalFilename());
 
-        // Recording 생성
+        // 🔥 Recording 생성 시, NOT NULL 필드 3개 모두 채워줘야 함
         Recording recording = Recording.builder()
+                .patient(patient)
                 .consultation(consultation)
                 .hospital(consultation.getHospital())
-                .filePath(key)   // key 저장
+                .filePath(key)
                 .format(extension)
                 .fileSizeMb((double) file.getSize() / (1024 * 1024))
                 .status(RecordingStatus.UPLOADED)
@@ -62,6 +71,7 @@ public class RecordingServiceImpl implements RecordingService {
 
         return RecordingDetailResponseDto.from(recording);
     }
+
 
     /** ----------------------------------------------------
      *  3. STT 실행 (Spring → AI 서버)

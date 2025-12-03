@@ -15,8 +15,7 @@ public interface RecordingService {
     /**
      * 녹음 업로드 (클라이언트가 S3로 전송할 파일 업로드)
      */
-    RecordingDetailResponseDto uploadRecording(Long consultationId, MultipartFile file);
-
+    RecordingDetailResponseDto uploadRecording(Long kakaoId, Long consultationId, MultipartFile file);
     /**
      * STT 실행 (Spring → AI 서버)
      * - AI 서버에 파일 전달
