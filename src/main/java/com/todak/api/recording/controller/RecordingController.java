@@ -58,10 +58,11 @@ public class RecordingController {
     )
     public ResponseEntity<RecordingDetailResponseDto> uploadRecording(
             @PathVariable Long consultationId,
+            @RequestParam("kakaoId") Long kakaoId,
             @RequestParam("file") MultipartFile file
     ) {
         RecordingDetailResponseDto dto =
-                recordingService.uploadRecording(consultationId, file);
+                recordingService.uploadRecording(kakaoId, consultationId, file);
 
         return ResponseEntity.ok(dto);
     }
