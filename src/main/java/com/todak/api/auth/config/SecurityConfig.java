@@ -54,9 +54,10 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // 개발 중에는 모든 요청 허용
+                        // "검사는 안 하지만..."
                         .anyRequest().permitAll()
-                );
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
