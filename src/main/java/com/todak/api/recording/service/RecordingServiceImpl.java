@@ -51,6 +51,7 @@ public class RecordingServiceImpl implements RecordingService {
         // Recording 생성
         Recording recording = Recording.builder()
                 .consultation(consultation)
+                .patient(consultation.getPatient())
                 .hospital(consultation.getHospital())
                 .filePath(key)   // key 저장
                 .format(extension)

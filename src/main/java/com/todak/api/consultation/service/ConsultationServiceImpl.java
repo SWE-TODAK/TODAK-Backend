@@ -1,5 +1,7 @@
 package com.todak.api.consultation.service;
 
+import com.todak.api.appointment.repository.AppointmentRepository;
+import com.todak.api.appointment.entity.Appointment;
 import com.todak.api.consultation.dto.response.*;
 import com.todak.api.consultation.dto.request.*;
 import com.todak.api.consultation.entity.Consultation;
@@ -24,6 +26,7 @@ import java.util.*;
 public class ConsultationServiceImpl implements ConsultationService {
 
     private final ConsultationRepository consultationRepository;
+    private final AppointmentRepository appointmentRepository;
     private final RecordingRepository recordingRepository;
     private final SummaryRepository summaryRepository;
     private final HospitalRepository hospitalRepository;
@@ -32,6 +35,8 @@ public class ConsultationServiceImpl implements ConsultationService {
     // 1) 진료 생성
     @Override
     public ConsultationCreateResponseDto startConsultation(Long appointmentId, Long kakaoId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
 
         User user = userRepository.findByKakaoId(kakaoId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -40,9 +45,9 @@ public class ConsultationServiceImpl implements ConsultationService {
                 .orElseThrow(() -> new IllegalArgumentException("Hospital not found"));
 
         Consultation consultation = Consultation.builder()
-                .appointmentId(appointmentId)
+                .appointment(appointment)
                 .hospital(hospital)
-                .patient(user)   // 🔥 UUID 대신 User 엔티티 통째로 저장
+                .patient(user)
                 .startedAt(OffsetDateTime.now())
                 .build();
 

@@ -28,7 +28,7 @@ public class ConsultationController {
             @RequestParam Long appointmentId
     ) {
         ConsultationCreateResponseDto response =
-                consultationService.startConsultation(appointmentId, kakaoId);
+                consultationService.startConsultation(kakaoId, appointmentId);
 
         return ResponseEntity.ok(response);
     }

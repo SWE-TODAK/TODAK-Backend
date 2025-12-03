@@ -1,5 +1,6 @@
 package com.todak.api.consultation.entity;
 
+import com.todak.api.appointment.entity.Appointment;
 import com.todak.api.hospital.entity.Hospital;
 import com.todak.api.user.entity.User;
 import jakarta.persistence.*;
@@ -26,8 +27,9 @@ public class Consultation {
      * 예약 ID (진료는 예약을 기반으로 생성됨)
      * Appointment 테이블이 생기면 ManyToOne으로 변경 가능
      */
-    @Column(name = "appointment_id")
-    private Long appointmentId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "appointment_id")
+    private Appointment appointment;
 
     /**
      * 병원 FK

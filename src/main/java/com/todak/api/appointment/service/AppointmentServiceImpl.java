@@ -51,7 +51,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         Appointment appointment = Appointment.builder()
-                .patient(patient)   // ⭐ 핵심 수정 (UUID X → User 엔티티 넣기)
+                .patient(patient)
                 .hospital(hospital)
                 .doctor(doctor)
                 .datetime(request.getDatetime().atOffset(ZoneOffset.of("+09:00")))
