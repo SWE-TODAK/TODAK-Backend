@@ -34,8 +34,8 @@ spring:
         bucket: todak-recordings # AWS S3 버킷 이름
         region: ap-northeast-2         # 서울 리전
       credentials:
-        access-key: AKIAX4YLG4JFLCXIBUUI
-        secret-key: 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
+        access-key: ${AWS_ACCESS_KEY_ID}
+        secret-key: ${AWS_SECRET_ACCESS_KEY}
 
 ai:
   server:
