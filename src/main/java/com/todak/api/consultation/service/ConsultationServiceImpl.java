@@ -34,7 +34,7 @@ public class ConsultationServiceImpl implements ConsultationService {
 
     // 1) 진료 생성
     @Override
-    public ConsultationCreateResponseDto startConsultation(Long appointmentId, Long kakaoId) {
+    public ConsultationCreateResponseDto startConsultation(Long kakaoId, Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
 

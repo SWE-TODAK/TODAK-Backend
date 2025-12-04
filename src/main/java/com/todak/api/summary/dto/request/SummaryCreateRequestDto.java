@@ -1,10 +1,12 @@
 package com.todak.api.summary.dto.request;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@Builder
 public class SummaryCreateRequestDto {
     private Long consultationId;
     private Long recordingId;
