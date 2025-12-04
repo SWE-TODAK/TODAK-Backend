@@ -9,6 +9,8 @@ import com.todak.api.recording.dto.response.RecordingDetailResponseDto;
 import com.todak.api.recording.entity.Recording;
 import com.todak.api.recording.entity.RecordingStatus;
 import com.todak.api.recording.repository.RecordingRepository;
+import com.todak.api.summary.service.SummaryService;
+import com.todak.api.summary.dto.request.SummaryCreateRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +23,7 @@ public class RecordingServiceImpl implements RecordingService {
     private final ConsultationRepository consultationRepository;
     private final S3UploaderService s3Uploader;
     private final AiClient aiClient;
+    private final SummaryService summaryService;
 
     /** ----------------------------------------------------
      *  1. 녹음 상세 조회
@@ -61,7 +64,12 @@ public class RecordingServiceImpl implements RecordingService {
 
         recordingRepository.save(recording);
 
-        return RecordingDetailResponseDto.from(recording);
+        runStt(recording.getRecordingId());
+
+        // 최신 상태 반영해서 리턴
+        Recording updated = recordingRepository.findById(recording.getRecordingId())
+                .orElseThrow();
+        return RecordingDetailResponseDto.from(updated);
     }
 
     /** ----------------------------------------------------
@@ -89,6 +97,13 @@ public class RecordingServiceImpl implements RecordingService {
         recording.setStatus(RecordingStatus.TRANSCRIBED);
 
         recordingRepository.save(recording);
+
+        summaryService.createSummary(
+                SummaryCreateRequestDto.builder()
+                        .consultationId(recording.getConsultation().getConsultationId())
+                        .recordingId(recording.getRecordingId())
+                        .build()
+        );
     }
 
     /** ----------------------------------------------------
