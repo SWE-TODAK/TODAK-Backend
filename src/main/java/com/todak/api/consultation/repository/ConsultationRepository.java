@@ -31,6 +31,5 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
     /**
      * 예약 ID로 조회 (예약 → 진료 연결 목적)
      */
-//    List<Consultation> findByAppointmentId(Long appointmentId);
-    List<Consultation> findByAppointment_AppointmentId(Long appointmentId);
+    List<Consultation> findByAppointmentId(Long appointmentId);
 }
