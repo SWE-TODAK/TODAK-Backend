@@ -1,0 +1,11 @@
+# 개발 환경 설정: 로컬 개발용 민감정보만 감추고 db주소나 로그 스웨거 같은 것만 노출
+spring:
+  # 예시
+  # datasource:
+    #url: jdbc:postgresql://localhost:5432/todak_dev
+    #username: ${DB_USER}
+    #password: ${DB_PASSWORD}
+
+logging:
+  level:
+    org.springframework.security: INFO

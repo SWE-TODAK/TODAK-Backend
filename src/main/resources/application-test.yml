@@ -1,0 +1,4 @@
+# 테스트할때만 사용 jwt secret 직접 넣엇 이것도 홍옵이 알아서 해봐
+jwt:
+  secret: "test-secret-should-be-long-enough-32chars!!" # 예시임 새로 생성 하시길
+  access-exp-min: 30

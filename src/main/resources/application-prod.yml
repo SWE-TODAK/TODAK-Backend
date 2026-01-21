@@ -1,0 +1,11 @@
+# 운영 환경 설정 실제 사용 할꺼임
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false

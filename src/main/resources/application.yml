@@ -1,0 +1,10 @@
+# 기본 yml 설정
+# 앞으로 secret키 4개 다 나눠서 사용할 에정
+spring:
+  application:
+    name: todak
+
+jwt:
+  secret: ${JWT_SECRET}   # Base64로 넣을 것
+  access-exp-min: 90
+  issuer: todak
