@@ -60,10 +60,7 @@ dependencies {
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
-
-    // --- Testcontainers (PostgreSQL) --- 이것도 홍옵이 테스트할때 건드셈
-    //testImplementation("org.testcontainers:junit-jupiter")
-    //testImplementation("org.testcontainers:postgresql")
+    testRuntimeOnly("com.h2database:h2")
 }
 
 

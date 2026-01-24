@@ -1,4 +1,17 @@
-# 테스트할때만 사용 jwt secret 직접 넣엇 이것도 홍옵이 알아서 해봐
+spring:
+  datasource:
+    url: jdbc:h2:mem:todak_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop # 테스트 시작 시 생성, 종료 시 삭제
+    show-sql: true # 테스트 쿼리 확인용
+    properties:
+      hibernate:
+        format_sql: true
+
 jwt:
-  secret: "test-secret-should-be-long-enough-32chars!!" # 예시임 새로 생성 하시길
+  secret: "test-secret-key-must-be-at-least-32-bytes-long-abcd" # 테스트용 고정 키
   access-exp-min: 30
