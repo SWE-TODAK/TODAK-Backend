@@ -1,11 +1,10 @@
-# 운영 환경 설정 실제 사용 할꺼임
 spring:
+  datasource:
+    url: ${TODAK_DB_URL}
+    username: ${TODAK_DB_USER}
+    password: ${TODAK_DB_PASS}
   jpa:
     hibernate:
-      ddl-auto: validate
-
-springdoc:
-  swagger-ui:
-    enabled: false
-  api-docs:
-    enabled: false
+      ddl-auto: validate # 운영은 validate 권장
+  flyway:
+    enabled: true #
