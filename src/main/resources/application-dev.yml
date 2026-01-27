@@ -1,11 +1,28 @@
-# 개발 환경 설정: 로컬 개발용 민감정보만 감추고 db주소나 로그 스웨거 같은 것만 노출
+# 개발 환경 설정: 로컬 개발용
+# - 민감정보는 환경변수(.env / dev-secret)에서 주입
+# - DB 주소, 로그, Swagger 등은 노출
+
 spring:
-  # 예시
-  # datasource:
-    #url: jdbc:postgresql://localhost:5432/todak_dev
-    #username: ${DB_USER}
-    #password: ${DB_PASSWORD}
+  datasource:
+    url: ${TODAK_DB_URL:jdbc:postgresql://127.0.0.1:5432/todak_dev}
+    username: ${TODAK_DB_USER:todak_app}
+    password: ${TODAK_DB_PASS:}
+
+  flyway:
+    enabled: true
+    locations:
+      - classpath:db/migration/postgresql
+      # - classpath:db/seed/dev
 
 logging:
   level:
     org.springframework.security: INFO
+    org.flywaydb: DEBUG
+
+# 개발환경에서만 Swagger 노출
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger

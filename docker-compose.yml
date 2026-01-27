@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: todak-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: todak_dev
+      POSTGRES_USER: todak_app
+      POSTGRES_PASSWORD: TodakApp!2026
+      TZ: Asia/Seoul
+    ports:
+      - "5432:5432"
+    volumes:
+      - todak_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todak_app -d todak_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  todak_pgdata:

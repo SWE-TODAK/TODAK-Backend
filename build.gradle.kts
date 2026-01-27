@@ -1,7 +1,7 @@
 plugins {
-	java
-	id("org.springframework.boot") version "3.5.9"
-	id("io.spring.dependency-management") version "1.1.7"
+    java
+    id("org.springframework.boot") version "3.5.9"
+    id("io.spring.dependency-management") version "1.1.7"
 }
 
 group = "com.sogong"
@@ -9,14 +9,17 @@ version = "0.0.1-SNAPSHOT"
 description = "Demo project for Spring Boot"
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
+
+// ✅ Flyway 버전은 여기서 "변수"로 확정해서, 의존성에 직접 꽂자
+val flywayVersion = "11.20.2"
 
 dependencies {
     // Web / Validation
@@ -36,14 +39,12 @@ dependencies {
     // OAuth2 (Kakao Login)
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
 
-    // DB Migration (Flyway)
-    implementation("org.flywaydb:flyway-core")
+    // ✅ DB Migration (Flyway) - 중복 제거 + 버전 강제
+    implementation("org.flywaydb:flyway-core:$flywayVersion")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql:$flywayVersion")
 
     // Redis (Refresh Token / Logout)
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
-
-    // AWS S3 추후 정선우가 버전 맞추렴
-    //implementation("io.awspring.cloud:spring-cloud-aws-starter-s3:3.1.1")
 
     // Swagger / OpenAPI
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0")
@@ -63,9 +64,8 @@ dependencies {
     testRuntimeOnly("com.h2database:h2")
 }
 
-
 tasks.withType<Test> {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
 
 tasks.getByName<Jar>("jar") {
