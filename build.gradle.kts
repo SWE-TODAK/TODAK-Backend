@@ -18,7 +18,7 @@ repositories {
     mavenCentral()
 }
 
-// ✅ Flyway 버전은 여기서 "변수"로 확정해서, 의존성에 직접 꽂자
+// Flyway 버전은 여기서 "변수"로 확정해서, 의존성에 직접 꽂자
 val flywayVersion = "11.20.2"
 
 dependencies {
@@ -39,7 +39,7 @@ dependencies {
     // OAuth2 (Kakao Login)
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
 
-    // ✅ DB Migration (Flyway) - 중복 제거 + 버전 강제
+    // DB Migration (Flyway) - 중복 제거 + 버전 강제
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     runtimeOnly("org.flywaydb:flyway-database-postgresql:$flywayVersion")
 

@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS users (
 
     email              VARCHAR(255),            -- UNIQUE + NULL 허용 (카카오만 쓰면 카카오에서 받아오거나 없을 수도)
     name               VARCHAR(50),             -- 본명
-    nickname           VARCHAR(50),             -- 닉네임
     birth_date         DATE,                    -- 생년월일
     gender             gender_enum,             -- 'MALE' | 'FEMALE'
     profile_image_url  TEXT,                    -- 프로필 이미지
