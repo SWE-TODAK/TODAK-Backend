@@ -1,8 +1,8 @@
 package com.sogong.todak.auth.jwt;
 
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -11,50 +11,82 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
+@Slf4j
 @Component
 public class JwtTokenProvider {
 
+    private static final String ROLE_KEY = "role";
     private final SecretKey key;
     private final long accessExpMin;
+    private final long refreshExpDays;
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.access-exp-min:30}") long accessExpMin
+            @Value("${jwt.access-exp-min:30}") long accessExpMin,
+            @Value("${jwt.refresh-exp-days:14}") long refreshExpDays
     ) {
-        // secret은 최소 32바이트 이상 권장
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        // 보안 권장사항: 서명 키는 최소 256비트(32바이트) 이상이어야 합니다.
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        this.key = Keys.hmacShaKeyFor(keyBytes);
         this.accessExpMin = accessExpMin;
+        this.refreshExpDays = refreshExpDays;
     }
 
-    public String createAccessToken(Long userId, String role) {
+    /** Access Token 생성: 유저의 UUID와 권한을 포함 */
+    public String createAccessToken(UUID userId, String role) {
+        return createToken(userId, role, Duration.ofMinutes(accessExpMin));
+    }
+
+    /** Refresh Token 생성: DB의 UserAuth 등과 연계하여 갱신 용도로 사용 */
+    public String createRefreshToken(UUID userId) {
+        return createToken(userId, null, Duration.ofDays(refreshExpDays));
+    }
+
+    private String createToken(UUID userId, String role, Duration duration) {
         Instant now = Instant.now();
-        return Jwts.builder()
-                .subject(String.valueOf(userId))
-                .claim("role", role)
+        JwtBuilder builder = Jwts.builder()
+                .subject(userId.toString()) // 모든 테이블의 공통 PK인 UUID 사용
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(Duration.ofMinutes(accessExpMin))))
-                .signWith(key)
-                .compact();
+                .expiration(Date.from(now.plus(duration)))
+                .signWith(key);
+
+        if (role != null) {
+            builder.claim(ROLE_KEY, role);
+        }
+
+        return builder.compact();
     }
 
+    /** * 토큰 유효성 검증 */
     public boolean validate(String token) {
         try {
             Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
             return true;
+        } catch (ExpiredJwtException e) {
+            log.info("Expired JWT token: {}", e.getMessage());
         } catch (JwtException | IllegalArgumentException e) {
-            return false;
+            log.info("Invalid JWT token: {}", e.getMessage());
         }
+        return false;
     }
 
-    public Long getUserId(String token) {
-        var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
-        return Long.parseLong(claims.getSubject());
+    public UUID getUserId(String token) {
+        return UUID.fromString(parseClaims(token).getSubject());
     }
 
     public String getRole(String token) {
-        var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
-        Object role = claims.get("role");
+        Object role = parseClaims(token).get(ROLE_KEY);
+        // 자체 로그인 사용자와 소셜 사용자 모두 최소 ROLE_USER 권한을 가짐을 전제로 합니다.
         return role == null ? "ROLE_USER" : role.toString();
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
