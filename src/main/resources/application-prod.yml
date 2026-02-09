@@ -5,6 +5,6 @@ spring:
     password: ${TODAK_DB_PASS}
   jpa:
     hibernate:
-      ddl-auto: validate # 운영은 validate 권장
+      ddl-auto: validate
   flyway:
     enabled: true #
