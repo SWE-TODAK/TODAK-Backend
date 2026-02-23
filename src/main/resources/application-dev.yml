@@ -12,8 +12,8 @@ spring:
       client:
         registration:
           kakao:
-            client-id: ${KAKAO_REST_API_KEY}
-            client-secret: ${KAKAO_CLIENT_SECRET}
+            client-id: 89015c2a864ed9dbb9f3e9e9f1c0bd92
+            client-secret: 5hCMwlHnDOWeaDWTeaWHq44xZGXU6XBT
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             redirect-uri: "http://localhost:8080/login/oauth2/code/kakao"
@@ -32,7 +32,7 @@ spring:
 logging:
   level:
     com.sogong.todak: DEBUG
-    org.springframework.security: INFO
+    org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
     org.springframework.security.oauth2: DEBUG
     org.springframework.web.client.RestTemplate: DEBUG

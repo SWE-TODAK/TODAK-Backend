@@ -51,11 +51,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .orElseGet(() -> registerNewSocialUser(provider, kakaoUserInfo));
 
         // 4. 최신 프로필 정보 동기화
-        // DB 컬럼명이 'name'으로 되어 있으므로 User 엔티티의 nickname 필드가 name 컬럼에 잘 매핑되었는지 확인 필요
         user.syncOAuth2Profile(
                 kakaoUserInfo.getEmail(),
                 ensureUniqueNickname(kakaoUserInfo.getNickname()),
-                kakaoUserInfo.getProfileImageUrl()
+                kakaoUserInfo.getProfileImageUrl(),
+                kakaoUserInfo.getBirthDate() // 추가: 생년월일 전달
         );
 
         // 5. 성공 핸들러를 위한 추가 속성 구성
@@ -78,6 +78,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .email(userInfo.getEmail())
                 .nickname(uniqueNickname)
                 .profileImageUrl(userInfo.getProfileImageUrl())
+                .birthDate(userInfo.getBirthDate())
                 .build();
 
         userRepository.save(newUser);

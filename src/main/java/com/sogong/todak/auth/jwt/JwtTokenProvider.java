@@ -18,38 +18,64 @@ import java.util.UUID;
 public class JwtTokenProvider {
 
     private static final String ROLE_KEY = "role";
+    private static final String TOKEN_TYPE_KEY = "token_type"; // ✅ access/refresh 구분용
+    private static final String ACCESS = "access";
+    private static final String REFRESH = "refresh";
+
     private final SecretKey key;
-    private final long accessExpMin;
-    private final long refreshExpDays;
+    private final Duration accessTtl;
+    private final Duration refreshTtl;
+    private final String issuer; // 선택이지만 추천
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-exp-min:30}") long accessExpMin,
-            @Value("${jwt.refresh-exp-days:14}") long refreshExpDays
+            @Value("${jwt.refresh-exp-days:14}") long refreshExpDays,
+            @Value("${jwt.issuer:todak}") String issuer
     ) {
-        // 보안 권장사항: 서명 키는 최소 256비트(32바이트) 이상이어야 합니다.
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+
+        // ✅ fail-fast: 너무 짧은 키는 운영에서 큰 사고 포인트
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException("jwt.secret must be at least 32 bytes (256 bits) for HS256");
+        }
+
         this.key = Keys.hmacShaKeyFor(keyBytes);
-        this.accessExpMin = accessExpMin;
-        this.refreshExpDays = refreshExpDays;
+        this.accessTtl = Duration.ofMinutes(accessExpMin);
+        this.refreshTtl = Duration.ofDays(refreshExpDays);
+        this.issuer = issuer;
     }
 
-    /** Access Token 생성: 유저의 UUID와 권한을 포함 */
+    /** Access Token 생성: userId + role + token_type=access */
     public String createAccessToken(UUID userId, String role) {
-        return createToken(userId, role, Duration.ofMinutes(accessExpMin));
+        return createToken(userId, role, ACCESS, accessTtl);
     }
 
-    /** Refresh Token 생성: DB의 UserAuth 등과 연계하여 갱신 용도로 사용 */
+    /** Refresh Token 생성: userId + token_type=refresh (role 불필요) */
     public String createRefreshToken(UUID userId) {
-        return createToken(userId, null, Duration.ofDays(refreshExpDays));
+        return createToken(userId, null, REFRESH, refreshTtl);
     }
 
-    private String createToken(UUID userId, String role, Duration duration) {
+    /** accessToken 만료(초) - AuthResponse.expiresInSeconds에 그대로 넣기 좋음 */
+    public long getAccessExpiresInSeconds() {
+        return accessTtl.getSeconds();
+    }
+
+    /** refreshToken 만료(초) - 필요하면 사용 */
+    public long getRefreshExpiresInSeconds() {
+        return refreshTtl.getSeconds();
+    }
+
+    private String createToken(UUID userId, String role, String tokenType, Duration ttl) {
         Instant now = Instant.now();
+
         JwtBuilder builder = Jwts.builder()
-                .subject(userId.toString()) // 모든 테이블의 공통 PK인 UUID 사용
+                .issuer(issuer)                         // ✅ 선택(권장)
+                .subject(userId.toString())
+                .id(UUID.randomUUID().toString())        // ✅ jti (권장)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(duration)))
+                .expiration(Date.from(now.plus(ttl)))
+                .claim(TOKEN_TYPE_KEY, tokenType)        // ✅ access/refresh 구분
                 .signWith(key);
 
         if (role != null) {
@@ -59,10 +85,13 @@ public class JwtTokenProvider {
         return builder.compact();
     }
 
-    /** * 토큰 유효성 검증 */
+    /**
+     * 토큰 유효성 검증 (boolean 버전)
+     * - access/refresh 구분 없이 서명/만료만 체크.
+     */
     public boolean validate(String token) {
         try {
-            Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
+            parseClaims(token);
             return true;
         } catch (ExpiredJwtException e) {
             log.info("Expired JWT token: {}", e.getMessage());
@@ -72,21 +101,42 @@ public class JwtTokenProvider {
         return false;
     }
 
+    /**
+     * ✅ 예외를 던지는 검증/파싱 버전
+     * - 필터/서비스에서 만료/형식오류를 구분해서 처리하고 싶을 때 사용
+     */
+    public Claims parseClaimsOrThrow(String token) throws JwtException {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    private Claims parseClaims(String token) {
+        return parseClaimsOrThrow(token);
+    }
+
     public UUID getUserId(String token) {
         return UUID.fromString(parseClaims(token).getSubject());
     }
 
     public String getRole(String token) {
         Object role = parseClaims(token).get(ROLE_KEY);
-        // 자체 로그인 사용자와 소셜 사용자 모두 최소 ROLE_USER 권한을 가짐을 전제로 합니다.
         return role == null ? "ROLE_USER" : role.toString();
     }
 
-    private Claims parseClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+    /** ✅ 토큰 타입 확인: access인지 refresh인지 판별 가능 */
+    public boolean isAccessToken(String token) {
+        return ACCESS.equals(getTokenType(token));
+    }
+
+    public boolean isRefreshToken(String token) {
+        return REFRESH.equals(getTokenType(token));
+    }
+
+    public String getTokenType(String token) {
+        Object t = parseClaims(token).get(TOKEN_TYPE_KEY);
+        return t == null ? null : t.toString();
     }
 }

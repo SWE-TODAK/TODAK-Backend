@@ -10,15 +10,13 @@ import java.util.UUID;
 @Repository
 public interface UserAuthRepository extends JpaRepository<UserAuth, UUID> {
 
-    /**
-     * 특정 사용자의 인증 정보를 조회합니다.
-     * UserAuth는 User와 PK를 공유(@MapsId)하므로
-     * userId를 통해 바로 조회가 가능합니다.
-     */
     Optional<UserAuth> findByUserId(UUID userId);
 
-    /**
-     * 특정 유저가 자체 로그인(Local) 정보를 가지고 있는지 확인합니다.
-     */
     boolean existsByUserId(UUID userId);
+
+    // ✅ 로컬 로그인 핵심: email로 UserAuth 바로 조회 (쿼리 1번으로 끝)
+    Optional<UserAuth> findByUser_Email(String email);
+
+    // ✅ (선택) 로컬 계정 존재 여부를 email로도 확인하고 싶을 때
+    boolean existsByUser_Email(String email);
 }

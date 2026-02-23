@@ -44,4 +44,8 @@ public class UserAuth {
         this.passwordHash = newPasswordHash;
         this.passwordUpdatedAt = OffsetDateTime.now();
     }
+
+    public void updateLastLogin() {
+        this.lastLoginAt = OffsetDateTime.now();
+    }
 }
