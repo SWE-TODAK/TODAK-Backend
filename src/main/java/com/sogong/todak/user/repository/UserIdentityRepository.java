@@ -13,7 +13,8 @@ import java.util.UUID;
 public interface UserIdentityRepository extends JpaRepository<UserIdentity, UUID> {
 
     /**
-     * @EntityGraph를 사용하여 User 엔티티까지 한 번에 페치 조인합니다. (N+1 방지)
+     * OAuth2 로그인에서 가장 많이 쓰는 조회:
+     * (provider, providerUserId)로 찾고 user까지 같이 로딩.
      */
     @EntityGraph(attributePaths = {"user"})
     Optional<UserIdentity> findByProviderAndProviderUserId(AuthProvider provider, String providerUserId);
@@ -25,9 +26,14 @@ public interface UserIdentityRepository extends JpaRepository<UserIdentity, UUID
      */
     List<UserIdentity> findAllByUser(User user);
 
+    // ✅ (개선) userId로 바로 목록 조회: 서비스에서 User를 또 조회할 필요 없음
+    List<UserIdentity> findAllByUser_UserId(UUID userId);
+
     /**
      * 특정 유저가 특정 provider를 이미 연결했는지 확인 (계정 연동 로직)
-     * 파라미터를 객체(User)가 아닌 ID(UUID)로 받는 버전도 유지합니다.
      */
     boolean existsByUser_UserIdAndProvider(UUID userId, AuthProvider provider);
+
+    // ✅ (개선) 특정 유저의 특정 provider identity를 직접 조회 (연동 해제/갱신 시 유용)
+    Optional<UserIdentity> findByUser_UserIdAndProvider(UUID userId, AuthProvider provider);
 }

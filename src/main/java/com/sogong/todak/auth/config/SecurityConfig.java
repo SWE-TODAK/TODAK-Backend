@@ -14,6 +14,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -36,7 +38,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
+        System.out.println("🔥🔥🔥 SecurityFilterChain LOADED 🔥🔥🔥");
         http
                 // 1. 기초 보안 설정
                 .csrf(AbstractHttpConfigurer::disable)
@@ -68,10 +70,20 @@ public class SecurityConfig {
                 // 4. 인가 규칙
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/**", "/login/**", "/oauth2/**").permitAll()
+
+                        // ✅ API 명세 베이스(/api/v1) 반영
+                        .requestMatchers(
+                                "/api/v1/auth/**",      // ← 너 AuthController 경로
+                                "/oauth2/**",
+                                "/login/**",
+                                "/login/oauth2/**"      // ← 콜백 경로 (중요)
+                        ).permitAll()
+
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
                         .anyRequest().authenticated()
                 )
+
 
                 // 5. OAuth2 로그인 설정
                 .oauth2Login(oauth -> oauth
@@ -101,4 +113,10 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", config);
         return source;
     }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
 }

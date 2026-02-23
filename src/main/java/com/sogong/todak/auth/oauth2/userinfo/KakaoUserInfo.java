@@ -1,5 +1,7 @@
 package com.sogong.todak.auth.oauth2.userinfo;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Optional;
 
@@ -11,8 +13,6 @@ public class KakaoUserInfo extends OAuth2UserInfo {
     @SuppressWarnings("unchecked")
     public KakaoUserInfo(Map<String, Object> attributes) {
         super(attributes);
-
-        // 생성자에서 미리 하위 데이터 구조를 파싱하여 반복 탐색 방지
         this.kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
         if (this.kakaoAccount != null) {
             this.profile = (Map<String, Object>) this.kakaoAccount.get("profile");
@@ -44,11 +44,34 @@ public class KakaoUserInfo extends OAuth2UserInfo {
                 .orElse(null);
     }
 
+    // --- 추가된 생년월일 처리 로직 ---
+
+    /**
+     * 카카오의 birthyear(YYYY)와 birthday(MMDD)를 합쳐 LocalDate로 반환합니다.
+     * DB의 birth_date (date) 컬럼과 매핑됩니다.
+     */
+    public LocalDate getBirthDate() {
+        if (kakaoAccount == null) return null;
+
+        String birthYear = (String) kakaoAccount.get("birthyear"); // 예: "1995"
+        String birthDay = (String) kakaoAccount.get("birthday");   // 예: "0521"
+
+        if (birthYear == null || birthDay == null) {
+            return null;
+        }
+
+        try {
+            // "1995" + "0521" = "19950521" -> LocalDate 변환
+            return LocalDate.parse(birthYear + birthDay, DateTimeFormatter.ofPattern("yyyyMMdd"));
+        } catch (Exception e) {
+            // 날짜 파싱 실패 시 로그를 남기거나 null 반환
+            return null;
+        }
+    }
+
     @Override
     public String getProfileImageUrl() {
         if (profile == null) return null;
-
-        // 우선순위에 따른 프로필 이미지 추출 (가장 고화질 -> 저화질 순 권장)
         return firstNonNull(
                 profile.get("profile_image_url"),
                 profile.get("profile_image"),
@@ -57,9 +80,6 @@ public class KakaoUserInfo extends OAuth2UserInfo {
         );
     }
 
-    /**
-     * 여러 개의 후보 중 가장 먼저 null이 아닌 값을 반환하는 헬퍼 메서드
-     */
     private String firstNonNull(Object... values) {
         for (Object v : values) {
             if (v != null) return String.valueOf(v);
