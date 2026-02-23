@@ -44,8 +44,11 @@ jobs:
           script: |
             cd /home/${{ secrets.USERNAME }}/app
             
-            # 8080 포트를 사용 중인 기존 프로세스 종료
+            # 기존 서버 종료
             fuser -k 8080/tcp || true
             
-            # 새 JAR 파일 실행 (로그는 app.log에 기록)
+            # .env 파일이 있다면 환경변수로 읽어와서 실행
+            # 만약 .env 파일이 서버에 없다면 미리 생성해둬야 합니다.
+            export $(grep -v '^#' .env | xargs)
+            
             nohup java -jar *.jar --spring.profiles.active=prod > app.log 2>&1 &
