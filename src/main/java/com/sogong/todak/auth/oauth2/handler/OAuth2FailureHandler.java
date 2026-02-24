@@ -1,5 +1,7 @@
 package com.sogong.todak.auth.oauth2.handler;
 
+import com.sogong.todak.auth.oauth2.cookie.CookieUtils;
+import com.sogong.todak.auth.oauth2.cookie.HttpCookieOAuth2AuthorizationRequestRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
@@ -26,6 +29,8 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
             HttpServletResponse response,
             AuthenticationException exception
     ) throws IOException {
+
+        // ---- 공통 로그 ----
         log.error("OAuth2 Failure Request URI      = {}", request.getRequestURI());
         log.error("OAuth2 Failure QueryString     = {}", request.getQueryString());
         log.error("OAuth2 Failure code param      = {}", request.getParameter("code"));
@@ -42,14 +47,36 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
         } else {
             log.error("OAuth2 Failure Cookies = NONE");
         }
-
-        // 1. 서버 로그에는 상세 원인 기록
         log.error("OAuth2 Authentication Failed: ", exception);
 
-        // 2. 프론트엔드에 전달할 에러 코드 분류
+        // ---- ✅ 추가: 중복 콜백/새로고침/만료 케이스 처리 ----
+        // 카카오가 진짜 에러를 준 경우에는 error 파라미터가 보통 존재
+        String providerError = request.getParameter("error");
+        boolean hasProviderErrorParam = StringUtils.hasText(providerError);
+
+        // 우리가 저장한 auth request 쿠키 존재 여부
+        boolean hasAuthRequestCookie = CookieUtils.getCookie(
+                request,
+                HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_AUTH_REQUEST_COOKIE_NAME
+        ).isPresent();
+
+        // error 파라미터는 없는데 쿠키도 없다?
+        // => 정상 로그인 성공 후 콜백 URL 새로고침/중복 진입/만료 등 "재진입" 확률 높음
+        if (!hasProviderErrorParam && !hasAuthRequestCookie) {
+            String targetUrl = UriComponentsBuilder.fromUriString(failureRedirectUrl)
+                    .queryParam("success", false)
+                    .queryParam("error", "auth_request_missing") // 프론트에서 안내 문구 처리
+                    .build()
+                    .toUriString();
+
+            log.warn("OAuth2 failure treated as duplicate/expired callback. Redirecting to={}", targetUrl);
+            response.sendRedirect(targetUrl);
+            return;
+        }
+
+        // ---- 기존 로직 유지 ----
         String errorCode = classify(exception);
 
-        // 3. 안전한 URL 생성 (상세 메시지는 보안을 위해 제외하거나 마스킹 처리)
         String targetUrl = UriComponentsBuilder.fromUriString(failureRedirectUrl)
                 .queryParam("success", false)
                 .queryParam("error", errorCode)
@@ -64,22 +91,20 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
      */
     private String classify(AuthenticationException e) {
         if (e == null) return "auth_failed";
-
         String message = e.getMessage() != null ? e.getMessage() : "";
 
-        // 사용자가 권한 승인을 거부한 경우
         if (message.contains("access_denied")) {
             return "user_cancelled";
         }
-
-        // 제공자(카카오 등) 관련 설정 오류
         if (message.contains("unsupported_provider") || message.contains("invalid_provider_id")) {
             return "provider_config_error";
         }
 
-        // 그 외 인증 과정 중 발생한 에러
+        // ✅ 쿠키/세션/요청 저장소에서 못 찾는 케이스를 좀 더 명확히
+        if (message.contains("authorization_request_not_found")) {
+            return "auth_request_not_found";
+        }
+
         return "authentication_error";
     }
-
-
 }
