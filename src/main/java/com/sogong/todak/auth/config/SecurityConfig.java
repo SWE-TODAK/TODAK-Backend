@@ -48,7 +48,6 @@ public class SecurityConfig {
 
                 // 2. 세션 정책: JWT 사용을 위해 STATELESS 지향
                 // OAuth2Login 진행 시 내부적으로 세션을 사용하므로 STATELESS 설정 시 주의가 필요하나,
-                // Spring Security 6에서는 관련 상태를 세션 대신 쿠키 등에 저장하는 설정을 추가할 수 있습니다.
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // 3. 예외 핸들링: API 응답 규격화
