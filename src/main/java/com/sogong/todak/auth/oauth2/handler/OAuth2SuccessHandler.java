@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -27,13 +29,12 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final ExchangeCodeStore exchangeCodeStore;
 
-    // ✅ 추가: 성공 시 쿠키 정리
-    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthRepo;
+    // ✅ 인터페이스 타입으로 주입받아 빈 주입 에러를 방지합니다.
+    private final AuthorizationRequestRepository<OAuth2AuthorizationRequest> cookieAuthRepo;
 
     @Value("${app.oauth2.mobile-callback-uri:todak://auth/callback}")
     private String mobileCallbackUri;
 
-    // (선택) 웹 테스트용 fallback
     @Value("${app.oauth2.web-callback-uri:http://localhost:3000/auth/callback}")
     private String webCallbackUri;
 
@@ -44,7 +45,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             Authentication authentication
     ) throws IOException {
 
-        // ✅ 캐시/재요청 억제 (브라우저가 redirect 응답을 이상하게 재사용하는 케이스 방어)
+        // 캐시 억제 설정
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0");
         response.setHeader(HttpHeaders.PRAGMA, "no-cache");
 
@@ -58,11 +59,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
             String code = exchangeCodeStore.issue(userId, isNewUser);
 
-            // ✅ 성공 시점에 auth request 관련 쿠키 제거
-            cookieAuthRepo.removeAuthorizationRequestCookies(response);
+            // ✅ 인터페이스에는 해당 메서드가 없으므로, 구현체인지 확인 후 형변환하여 호출합니다.
+            clearAuthenticationAttributes(request, response);
 
-            // ✅ 브라우저에서 todak:// 스킴을 못 열면 UX가 꼬일 수 있으니,
-            // 테스트 환경에서는 webCallbackUri로 보내도 됨 (원하면 조건 분기)
             boolean isBrowser = isLikelyBrowser(request);
             String callback = isBrowser ? webCallbackUri : mobileCallbackUri;
 
@@ -76,8 +75,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         } catch (Exception e) {
             log.error("OAuth2 SuccessHandler failed", e);
 
-            // 실패도 쿠키 정리 (재시도 UX 위해)
-            cookieAuthRepo.removeAuthorizationRequestCookies(response);
+            // 실패 시에도 쿠키 정리
+            clearAuthenticationAttributes(request, response);
 
             targetUrl = UriComponentsBuilder.fromUriString(webCallbackUri)
                     .queryParam("success", false)
@@ -89,9 +88,17 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         response.sendRedirect(targetUrl);
     }
 
+    /**
+     * ✅ 쿠키 정리 로직을 별도 메서드로 추출 (형변환 포함)
+     */
+    private void clearAuthenticationAttributes(HttpServletRequest request, HttpServletResponse response) {
+        if (cookieAuthRepo instanceof HttpCookieOAuth2AuthorizationRequestRepository repository) {
+            repository.removeAuthorizationRequestCookies(response);
+        }
+    }
+
     private boolean isLikelyBrowser(HttpServletRequest request) {
         String ua = request.getHeader("User-Agent");
-        // 매우 러프하지만 로컬에서 “브라우저 테스트”일 때 webCallback로 보내기 좋음
         return ua != null && (ua.contains("Chrome") || ua.contains("Edg") || ua.contains("Safari") || ua.contains("Firefox"));
     }
 
