@@ -14,6 +14,7 @@ import java.util.UUID;
 public class HealthMetric {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "metric_id")
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)

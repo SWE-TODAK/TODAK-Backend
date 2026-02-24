@@ -51,4 +51,4 @@ jobs:
             # 만약 .env 파일이 서버에 없다면 미리 생성해둬야 합니다.
             export $(grep -v '^#' .env | xargs)
             
-            nohup java -jar *.jar --spring.profiles.active=prod > app.log 2>&1 &
+            nohup java -jar *.jar --spring.profiles.active=dev > app.log 2>&1 &
