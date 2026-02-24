@@ -21,6 +21,8 @@ jwt:
 app:
   oauth2:
     redirect-success: http://localhost:3000/auth/callback
+    exchange-code-ttl-seconds: 300
+    exchange-code-cleanup-ms: 60000
   jwt:
     cookie:
       access-name: ACCESS_TOKEN

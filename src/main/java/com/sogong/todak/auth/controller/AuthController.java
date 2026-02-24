@@ -1,9 +1,11 @@
 package com.sogong.todak.auth.controller;
 
 import com.sogong.todak.auth.dto.request.LoginRequest;
+import com.sogong.todak.auth.dto.request.OAuthExchangeRequest;
 import com.sogong.todak.auth.dto.request.SignupRequest;
 import com.sogong.todak.auth.dto.response.AuthResponse;
 import com.sogong.todak.auth.oauth2.service.LocalAuthService;
+import com.sogong.todak.auth.oauth2.service.OAuthExchangeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +21,12 @@ import java.util.Map;
 public class AuthController {
 
     private final LocalAuthService localAuthService;
+    private final OAuthExchangeService oAuthExchangeService;
 
+    @PostMapping("/oauth/exchange")
+    public ResponseEntity<AuthResponse> oauthExchange(@Valid @RequestBody OAuthExchangeRequest request) {
+        return ResponseEntity.ok(oAuthExchangeService.exchange(request));
+    }
     /**
      * 프론트/앱이 열 "카카오 로그인 시작 URL"
      * - 로컬:  http://localhost:8080/oauth2/authorization/kakao
