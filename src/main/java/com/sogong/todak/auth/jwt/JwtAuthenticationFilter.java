@@ -32,8 +32,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        log.info("📌 [JWT FILTER] {} {}", request.getMethod(), request.getRequestURI());
-        log.info("📌 [JWT FILTER] Authorization = {}", request.getHeader("Authorization"));
 
         // 1. Authorization 헤더에서 토큰 추출
         String token = resolveToken(request);

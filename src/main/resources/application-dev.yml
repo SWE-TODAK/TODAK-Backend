@@ -1,5 +1,5 @@
 app:
-  server-url: http://localhost:8080
+  server-url: http://3.34.99.179:8080
 spring:
   datasource:
     url: ${TODAK_DB_URL:jdbc:postgresql://127.0.0.1:5432/todak_dev}
@@ -12,7 +12,7 @@ spring:
       client:
         registration:
           kakao:
-            client-id: ${KAKAO_CLIENT_ID}
+            client-id: ${KAKAO_REST_API_KEY}
             client-secret: ${KAKAO_CLIENT_SECRET}
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code

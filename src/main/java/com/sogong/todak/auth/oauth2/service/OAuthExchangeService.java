@@ -32,7 +32,7 @@ public class OAuthExchangeService {
     @Value("${app.jwt.access-ttl-seconds:1800}")
     private long accessTtlSeconds;
 
-    @Transactional // ✅ 향후 refresh 저장 대비
+    @Transactional // 향후 refresh 저장 대비
     public AuthResponse exchange(OAuthExchangeRequest request) {
 
         ExchangeCodePayload payload = exchangeCodeStore.consume(request.getCode())

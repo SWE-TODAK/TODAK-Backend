@@ -38,7 +38,6 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final OAuth2FailureHandler oAuth2FailureHandler;
 
-    // ✅ 외부에서 주입받아 순환 참조 방지
     private final AuthorizationRequestRepository<OAuth2AuthorizationRequest> cookieAuthRepo;
 
     @Bean
