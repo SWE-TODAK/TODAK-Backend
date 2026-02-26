@@ -49,8 +49,7 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
         }
         log.error("OAuth2 Authentication Failed: ", exception);
 
-        // ---- ✅ 추가: 중복 콜백/새로고침/만료 케이스 처리 ----
-        // 카카오가 진짜 에러를 준 경우에는 error 파라미터가 보통 존재
+        // ---- 중복 콜백/새로고침/만료 케이스 처리 ----
         String providerError = request.getParameter("error");
         boolean hasProviderErrorParam = StringUtils.hasText(providerError);
 
@@ -61,7 +60,7 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
         ).isPresent();
 
         // error 파라미터는 없는데 쿠키도 없다?
-        // => 정상 로그인 성공 후 콜백 URL 새로고침/중복 진입/만료 등 "재진입" 확률 높음
+        // => 정상 로그인 성공 후 콜백 URL 새로고침/중복 진입/만료 등
         if (!hasProviderErrorParam && !hasAuthRequestCookie) {
             String targetUrl = UriComponentsBuilder.fromUriString(failureRedirectUrl)
                     .queryParam("success", false)
@@ -74,7 +73,6 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
             return;
         }
 
-        // ---- 기존 로직 유지 ----
         String errorCode = classify(exception);
 
         String targetUrl = UriComponentsBuilder.fromUriString(failureRedirectUrl)

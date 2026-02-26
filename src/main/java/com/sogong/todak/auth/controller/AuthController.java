@@ -32,8 +32,6 @@ public class AuthController {
      * - 로컬:  http://localhost:8080/oauth2/authorization/kakao
      * - 운영:  https://todak.com/oauth2/authorization/kakao (리버스프록시 구성에 따라)
      *
-     * ⚠️ 모바일앱 기준:
-     *  - 이 URL을 WebView/CustomTabs/SafariVC로 열고,
      *  - SuccessHandler가 todak://auth/callback?code=XXXX 로 딥링크 리다이렉트하게 될 예정
      */
     @Value("${app.oauth2.kakao.authorization-uri:/oauth2/authorization/kakao}")

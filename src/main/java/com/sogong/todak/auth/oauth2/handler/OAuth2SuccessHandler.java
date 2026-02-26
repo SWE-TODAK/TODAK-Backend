@@ -29,12 +29,13 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final ExchangeCodeStore exchangeCodeStore;
 
-    // ✅ 인터페이스 타입으로 주입받아 빈 주입 에러를 방지합니다.
     private final AuthorizationRequestRepository<OAuth2AuthorizationRequest> cookieAuthRepo;
 
+    // 배포용
     @Value("${app.oauth2.mobile-callback-uri:todak://auth/callback}")
     private String mobileCallbackUri;
 
+    //로컬 테스트용
     @Value("${app.oauth2.web-callback-uri:http://localhost:3000/auth/callback}")
     private String webCallbackUri;
 
@@ -59,7 +60,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
             String code = exchangeCodeStore.issue(userId, isNewUser);
 
-            // ✅ 인터페이스에는 해당 메서드가 없으므로, 구현체인지 확인 후 형변환하여 호출합니다.
+            // 형변환하여 호출
             clearAuthenticationAttributes(request, response);
 
             boolean isBrowser = isLikelyBrowser(request);
@@ -89,7 +90,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     }
 
     /**
-     * ✅ 쿠키 정리 로직을 별도 메서드로 추출 (형변환 포함)
+     * 쿠키 정리 로직을 별도 메서드로 추출 (형변환 포함)
      */
     private void clearAuthenticationAttributes(HttpServletRequest request, HttpServletResponse response) {
         if (cookieAuthRepo instanceof HttpCookieOAuth2AuthorizationRequestRepository repository) {

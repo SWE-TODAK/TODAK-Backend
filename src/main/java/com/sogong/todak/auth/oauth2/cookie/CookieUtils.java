@@ -24,7 +24,6 @@ public final class CookieUtils {
 
     public static void deleteCookie(HttpServletResponse response, String name) {
         // 기본값: httpOnly=true, secure=false (로컬 기준)
-        // secure는 운영에서 cookieSecure=true로 세팅된 repo/handler에서 오버로드 사용 추천
         deleteCookie(response, name, true, false);
     }
 
@@ -62,8 +61,7 @@ public final class CookieUtils {
     }
 
     /**
-     * ✅ 객체 -> (Java Serialization) -> Base64URL
-     * OAuth2AuthorizationRequest는 Serializable이라 이 방식이 가장 호환성이 좋음.
+     * object -> (Java Serialization) -> Base64URL
      */
     public static String serialize(Object object) {
         byte[] bytes = SerializationUtils.serialize(object);
@@ -76,7 +74,7 @@ public final class CookieUtils {
     }
 
     /**
-     * ✅ Base64URL -> (Java Deserialization) -> 객체
+     * Base64URL -> (Java Deserialization) -> object
      * 실패 시 null 반환(인증 재시도 유도)
      */
     public static <T> T deserialize(Cookie cookie, Class<T> clazz) {
