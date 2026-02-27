@@ -7,11 +7,10 @@ import com.sogong.todak.auth.dto.response.UserSummaryResponse;
 import com.sogong.todak.auth.jwt.JwtTokenProvider;
 import com.sogong.todak.auth.oauth2.exchange.ExchangeCodePayload;
 import com.sogong.todak.auth.oauth2.exchange.ExchangeCodeStore;
-import com.sogong.todak.auth.domain.AuthProvider;
 import com.sogong.todak.user.entity.User;
-import com.sogong.todak.user.entity.UserIdentity;
 import com.sogong.todak.user.repository.UserIdentityRepository;
 import com.sogong.todak.user.repository.UserRepository;
+import com.sogong.todak.auth.refresh.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,12 +26,14 @@ public class OAuthExchangeService {
     private final ExchangeCodeStore exchangeCodeStore;
     private final UserRepository userRepository;
     private final UserIdentityRepository userIdentityRepository;
+
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${app.jwt.access-ttl-seconds:1800}")
     private long accessTtlSeconds;
 
-    @Transactional // 향후 refresh 저장 대비
+    @Transactional
     public AuthResponse exchange(OAuthExchangeRequest request) {
 
         ExchangeCodePayload payload = exchangeCodeStore.consume(request.getCode())
@@ -51,15 +52,15 @@ public class OAuthExchangeService {
                 .toList();
 
         String accessToken = jwtTokenProvider.createAccessToken(userId, "ROLE_USER");
-        String refreshToken = jwtTokenProvider.createRefreshToken(userId);
 
-        // TODO(강추): refreshToken 저장 로직 추가
+        String refreshToken = refreshTokenService.issue(userId);
 
         TokenPairResponse tokenPair = TokenPairResponse.builder()
                 .tokenType("Bearer")
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .expiresInSeconds(accessTtlSeconds)
+                .expiresInSeconds(accessTtlSeconds) // 또는 jwtTokenProvider.getAccessExpiresInSeconds()
+                .rotated(true)
                 .build();
 
         UserSummaryResponse userSummary = UserSummaryResponse.builder()

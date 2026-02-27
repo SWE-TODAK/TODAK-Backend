@@ -18,7 +18,7 @@ import java.util.UUID;
 public class JwtTokenProvider {
 
     private static final String ROLE_KEY = "role";
-    private static final String TOKEN_TYPE_KEY = "token_type"; // ✅ access/refresh 구분용
+    private static final String TOKEN_TYPE_KEY = "token_type"; // access/refresh 구분용
     private static final String ACCESS = "access";
     private static final String REFRESH = "refresh";
 
@@ -50,11 +50,6 @@ public class JwtTokenProvider {
         return createToken(userId, role, ACCESS, accessTtl);
     }
 
-    /** Refresh Token 생성: userId + token_type=refresh (role 불필요) */
-    public String createRefreshToken(UUID userId) {
-        return createToken(userId, null, REFRESH, refreshTtl);
-    }
-
     /** accessToken 만료(초) - AuthResponse.expiresInSeconds에 그대로 넣기  */
     public long getAccessExpiresInSeconds() {
         return accessTtl.getSeconds();
@@ -74,7 +69,7 @@ public class JwtTokenProvider {
                 .id(UUID.randomUUID().toString())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(ttl)))
-                .claim(TOKEN_TYPE_KEY, tokenType)        // ✅ access/refresh 구분
+                .claim(TOKEN_TYPE_KEY, tokenType)        // access/refresh 구분
                 .signWith(key);
 
         if (role != null) {
