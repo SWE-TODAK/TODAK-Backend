@@ -62,4 +62,9 @@ public class Recording {
         this.status = RecordingStatus.UPLOADED;
         this.updatedAt = OffsetDateTime.now();
     }
+
+    public void markProcessing() {
+        this.status = RecordingStatus.PROCESSING;
+        this.updatedAt = OffsetDateTime.now();
+    }
 }

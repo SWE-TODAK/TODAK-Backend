@@ -4,6 +4,8 @@ import com.sogong.todak.recording.dto.request.CreateRecordingUploadRequest;
 import com.sogong.todak.recording.dto.request.MarkUploadedRequest;
 import com.sogong.todak.recording.dto.response.CreateRecordingUploadResponse;
 import com.sogong.todak.recording.service.RecordingService;
+import com.sogong.todak.job.dto.response.JobResponse;
+import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +38,16 @@ public class RecordingController {
         UUID userId = getCurrentUserId();
         recordingService.markUploaded(userId, recordingId, req);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{recordingId}/stt")
+    public ResponseEntity<JobResponse> startStt(@PathVariable UUID recordingId) {
+
+        UUID userId = getCurrentUserId();
+
+        JobResponse response = recordingService.startStt(userId, recordingId);
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
     private UUID getCurrentUserId() {

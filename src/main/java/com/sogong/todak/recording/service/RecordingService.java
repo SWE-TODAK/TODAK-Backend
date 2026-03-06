@@ -6,6 +6,11 @@ import com.sogong.todak.recording.dto.request.MarkUploadedRequest;
 import com.sogong.todak.recording.dto.response.CreateRecordingUploadResponse;
 import com.sogong.todak.recording.entity.Recording;
 import com.sogong.todak.recording.repository.RecordingRepository;
+import com.sogong.todak.job.dto.response.JobResponse;
+import com.sogong.todak.job.entity.Job;
+import com.sogong.todak.job.entity.JobType;
+import com.sogong.todak.job.repository.JobRepository;
+import com.sogong.todak.recording.entity.RecordingStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,6 +24,7 @@ public class RecordingService {
 
     private final RecordingRepository recordingRepository;
     private final S3PresignService s3PresignService;
+    private final JobRepository jobRepository;
 
     @Value("${aws.s3.prefix:recordings}")
     private String prefix;
@@ -62,5 +68,30 @@ public class RecordingService {
             case "audio/mpeg" -> "mp3";
             default -> "wav";
         };
+    }
+
+    public JobResponse startStt(UUID userId, UUID recordingId) {
+
+        var recording = recordingRepository
+                .findByRecordingIdAndUserId(recordingId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Recording not found"));
+
+        if (recording.getStatus() != RecordingStatus.UPLOADED) {
+            throw new IllegalStateException("Recording is not uploaded yet");
+        }
+
+        var existingJob = jobRepository
+                .findByRecordingIdAndJobType(recordingId, JobType.STT);
+
+        if (existingJob.isPresent()) {
+            return JobResponse.from(existingJob.get());
+        }
+
+        Job job = Job.create(recordingId, JobType.STT);
+        jobRepository.save(job);
+
+        recording.markProcessing();
+
+        return JobResponse.from(job);
     }
 }
