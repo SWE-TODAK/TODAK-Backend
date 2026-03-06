@@ -44,7 +44,6 @@ public class AuthController {
     // =========================
     // Kakao
     // =========================
-
     @PostMapping("/kakao/login")
     public ResponseEntity<Map<String, String>> kakaoLogin() {
         return ResponseEntity.ok(Map.of("redirectUrl", kakaoAuthorizationUri));
