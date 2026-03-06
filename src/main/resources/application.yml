@@ -2,28 +2,18 @@ spring:
   application:
     name: todak
   profiles:
-    active: dev # 기본 프로파일을 dev로 설정 (운영 시 prod로 교체)
+    active: dev
 
   jpa:
-    open-in-view: false # 성능 및 OSIV 방지를 위해 권장
+    open-in-view: false
     hibernate:
-      ddl-auto: validate # Flyway를 사용하므로 validate로 설정
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
-        show_sql: false # 로그 설정에서 관리하는 것이 깔끔함
+        show_sql: false
 
 jwt:
-  secret: ${JWT_SECRET} # 32바이트 이상의 Base64 또는 일반 문자열
-  access-exp-min: 30 # 코드 리뷰 시 30분으로 제안했던 값 반영
+  secret: ${JWT_SECRET}
+  access-exp-min: 30
   refresh-exp-days: 14
-
-app:
-  oauth2:
-    redirect-success: http://localhost:3000/auth/callback
-  jwt:
-    cookie:
-      access-name: ACCESS_TOKEN
-      refresh-name: REFRESH_TOKEN
-      secure: false # 로컬 개발 시 false, 운영 시 true
-      same-site: Lax

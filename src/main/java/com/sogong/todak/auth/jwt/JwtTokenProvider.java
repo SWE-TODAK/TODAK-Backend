@@ -18,7 +18,7 @@ import java.util.UUID;
 public class JwtTokenProvider {
 
     private static final String ROLE_KEY = "role";
-    private static final String TOKEN_TYPE_KEY = "token_type"; // ✅ access/refresh 구분용
+    private static final String TOKEN_TYPE_KEY = "token_type"; // access/refresh 구분용
     private static final String ACCESS = "access";
     private static final String REFRESH = "refresh";
 
@@ -35,7 +35,6 @@ public class JwtTokenProvider {
     ) {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
 
-        // ✅ fail-fast: 너무 짧은 키는 운영에서 큰 사고 포인트
         if (keyBytes.length < 32) {
             throw new IllegalArgumentException("jwt.secret must be at least 32 bytes (256 bits) for HS256");
         }
@@ -51,12 +50,7 @@ public class JwtTokenProvider {
         return createToken(userId, role, ACCESS, accessTtl);
     }
 
-    /** Refresh Token 생성: userId + token_type=refresh (role 불필요) */
-    public String createRefreshToken(UUID userId) {
-        return createToken(userId, null, REFRESH, refreshTtl);
-    }
-
-    /** accessToken 만료(초) - AuthResponse.expiresInSeconds에 그대로 넣기 좋음 */
+    /** accessToken 만료(초) - AuthResponse.expiresInSeconds에 그대로 넣기  */
     public long getAccessExpiresInSeconds() {
         return accessTtl.getSeconds();
     }
@@ -70,12 +64,12 @@ public class JwtTokenProvider {
         Instant now = Instant.now();
 
         JwtBuilder builder = Jwts.builder()
-                .issuer(issuer)                         // ✅ 선택(권장)
+                .issuer(issuer)
                 .subject(userId.toString())
-                .id(UUID.randomUUID().toString())        // ✅ jti (권장)
+                .id(UUID.randomUUID().toString())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(ttl)))
-                .claim(TOKEN_TYPE_KEY, tokenType)        // ✅ access/refresh 구분
+                .claim(TOKEN_TYPE_KEY, tokenType)        // access/refresh 구분
                 .signWith(key);
 
         if (role != null) {
@@ -102,7 +96,7 @@ public class JwtTokenProvider {
     }
 
     /**
-     * ✅ 예외를 던지는 검증/파싱 버전
+     * 예외를 던지는 검증/파싱 버전
      * - 필터/서비스에서 만료/형식오류를 구분해서 처리하고 싶을 때 사용
      */
     public Claims parseClaimsOrThrow(String token) throws JwtException {
@@ -126,7 +120,7 @@ public class JwtTokenProvider {
         return role == null ? "ROLE_USER" : role.toString();
     }
 
-    /** ✅ 토큰 타입 확인: access인지 refresh인지 판별 가능 */
+    /** 토큰 타입 확인: access인지 refresh인지 판별 가능 */
     public boolean isAccessToken(String token) {
         return ACCESS.equals(getTokenType(token));
     }

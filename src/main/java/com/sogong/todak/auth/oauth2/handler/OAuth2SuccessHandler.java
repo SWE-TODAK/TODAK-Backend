@@ -1,14 +1,16 @@
 package com.sogong.todak.auth.oauth2.handler;
 
-import com.sogong.todak.auth.jwt.JwtTokenProvider;
+import com.sogong.todak.auth.oauth2.cookie.HttpCookieOAuth2AuthorizationRequestRepository;
+import com.sogong.todak.auth.oauth2.exchange.ExchangeCodeStore;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -22,28 +24,20 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    private static final String ATTR_USER_ID = "app_user_id";
+    private static final String ATTR_IS_NEW_USER = "is_new_user";
 
-    @Value("${app.oauth2.redirect-success:http://localhost:3000/auth/callback}")
-    private String successRedirectUrl;
+    private final ExchangeCodeStore exchangeCodeStore;
 
-    @Value("${app.jwt.cookie.access-name:ACCESS_TOKEN}")
-    private String accessCookieName;
+    private final AuthorizationRequestRepository<OAuth2AuthorizationRequest> cookieAuthRepo;
 
-    @Value("${app.jwt.cookie.refresh-name:REFRESH_TOKEN}")
-    private String refreshCookieName;
+    // 배포용
+    @Value("${app.oauth2.mobile-callback-uri:todak://auth/callback}")
+    private String mobileCallbackUri;
 
-    @Value("${app.jwt.access-ttl-seconds:1800}")
-    private long accessTtlSeconds;
-
-    @Value("${app.jwt.refresh-ttl-seconds:1209600}")
-    private long refreshTtlSeconds;
-
-    @Value("${app.jwt.cookie.secure:false}")
-    private boolean cookieSecure;
-
-    @Value("${app.jwt.cookie.same-site:Lax}")
-    private String sameSite;
+    //로컬 테스트용
+    @Value("${app.oauth2.web-callback-uri:http://localhost:3000/auth/callback}")
+    private String webCallbackUri;
 
     @Override
     public void onAuthenticationSuccess(
@@ -52,68 +46,81 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             Authentication authentication
     ) throws IOException {
 
+        // 캐시 억제 설정
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0");
+        response.setHeader(HttpHeaders.PRAGMA, "no-cache");
+
+        String targetUrl;
+
         try {
-            // 1. Principal로부터 최적화된 방식으로 UUID 추출
-            UUID userId = extractUserId(authentication);
+            OAuth2User principal = requireOAuth2User(authentication);
 
-            // 2. JWT 토큰 발급 (userId는 모든 테이블의 공통 식별자)
-            String accessToken = jwtTokenProvider.createAccessToken(userId, "ROLE_USER");
-            String refreshToken = jwtTokenProvider.createRefreshToken(userId);
+            UUID userId = extractUserId(principal);
+            boolean isNewUser = extractIsNewUser(principal);
 
-            // 3. HTTP Only 쿠키 설정
-            setTokenCookies(response, accessToken, refreshToken);
+            String code = exchangeCodeStore.issue(userId, isNewUser);
 
-            log.info("OAuth2 Login Success: userId={}, redirecting to callback", userId);
-            response.sendRedirect(successRedirectUrl);
+            // 형변환하여 호출
+            clearAuthenticationAttributes(request, response);
+
+            boolean isBrowser = isLikelyBrowser(request);
+            String callback = isBrowser ? webCallbackUri : mobileCallbackUri;
+
+            targetUrl = UriComponentsBuilder.fromUriString(callback)
+                    .queryParam("code", code)
+                    .build()
+                    .toUriString();
+
+            log.info("OAuth2 Success: userId={}, issued exchangeCode, redirect={}", userId, callback);
 
         } catch (Exception e) {
-            log.error("OAuth2 Success Handler Error: ", e);
+            log.error("OAuth2 SuccessHandler failed", e);
 
-            // 실패 시 에러 코드를 포함하여 안전하게 리다이렉트
-            String errorUrl = UriComponentsBuilder.fromUriString(successRedirectUrl)
+            // 실패 시에도 쿠키 정리
+            clearAuthenticationAttributes(request, response);
+
+            targetUrl = UriComponentsBuilder.fromUriString(webCallbackUri)
                     .queryParam("success", false)
-                    .queryParam("error", "authentication_failed")
-                    .build().toUriString();
-            response.sendRedirect(errorUrl);
+                    .queryParam("error", "auth_failed")
+                    .build()
+                    .toUriString();
         }
+
+        response.sendRedirect(targetUrl);
     }
 
     /**
-     * CustomOAuth2UserService에서 enriched attributes에 담은 UUID를 추출합니다.
+     * 쿠키 정리 로직을 별도 메서드로 추출 (형변환 포함)
      */
-    private UUID extractUserId(Authentication authentication) {
-        if (!(authentication.getPrincipal() instanceof OAuth2User principal)) {
-            throw new IllegalArgumentException("Invalid principal type: Expected OAuth2User");
+    private void clearAuthenticationAttributes(HttpServletRequest request, HttpServletResponse response) {
+        if (cookieAuthRepo instanceof HttpCookieOAuth2AuthorizationRequestRepository repository) {
+            repository.removeAuthorizationRequestCookies(response);
         }
-
-        Object attr = principal.getAttribute("app_user_id");
-        if (attr == null) {
-            throw new IllegalStateException("Required attribute 'app_user_id' is missing");
-        }
-
-        // 이미 UUID 객체라면 바로 반환, 문자열이라면 파싱 (유연한 처리)
-        if (attr instanceof UUID uuid) {
-            return uuid;
-        }
-        return UUID.fromString(attr.toString());
     }
 
-    private void setTokenCookies(HttpServletResponse response, String access, String refresh) {
-        addCookie(response, buildCookie(accessCookieName, access, accessTtlSeconds));
-        addCookie(response, buildCookie(refreshCookieName, refresh, refreshTtlSeconds));
+    private boolean isLikelyBrowser(HttpServletRequest request) {
+        String ua = request.getHeader("User-Agent");
+        return ua != null && (ua.contains("Chrome") || ua.contains("Edg") || ua.contains("Safari") || ua.contains("Firefox"));
     }
 
-    private ResponseCookie buildCookie(String name, String value, long maxAge) {
-        return ResponseCookie.from(name, value)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .maxAge(maxAge)
-                .sameSite(sameSite)
-                .build();
+    private OAuth2User requireOAuth2User(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof OAuth2User oAuth2User)) {
+            throw new IllegalArgumentException("Invalid principal type: " + principal.getClass());
+        }
+        return oAuth2User;
     }
 
-    private void addCookie(HttpServletResponse response, ResponseCookie cookie) {
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    private UUID extractUserId(OAuth2User principal) {
+        Object attr = principal.getAttribute(ATTR_USER_ID);
+        if (attr == null) throw new IllegalStateException(ATTR_USER_ID + " is missing");
+        return (attr instanceof UUID uuid) ? uuid : UUID.fromString(attr.toString());
+    }
+
+    private boolean extractIsNewUser(OAuth2User principal) {
+        Object attr = principal.getAttribute(ATTR_IS_NEW_USER);
+        if (attr instanceof Boolean bool) return bool;
+        if (attr instanceof String str) return Boolean.parseBoolean(str);
+        return false;
     }
 }

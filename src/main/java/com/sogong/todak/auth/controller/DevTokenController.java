@@ -1,6 +1,8 @@
 package com.sogong.todak.auth.controller;
 
 import com.sogong.todak.auth.jwt.JwtTokenProvider;
+import com.sogong.todak.auth.refresh.service.RefreshTokenService;
+import com.sogong.todak.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -19,6 +21,8 @@ import java.util.UUID;
 public class DevTokenController {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
+    private final UserRepository userRepository;
 
     /**
      * 개발용 토큰 발급 엔드포인트
@@ -26,28 +30,37 @@ public class DevTokenController {
      */
     @GetMapping("/dev-token")
     public ResponseEntity<Map<String, Object>> devToken(
-            @RequestParam(name = "userId", required = false) String userIdStr
+            @RequestParam(name = "userId") String userIdStr
     ) {
         final UUID userId;
         try {
-            // 1. ID 타입 일치화: 입력이 없으면 임시 UUID 생성, 있으면 파싱
-            userId = (userIdStr == null || userIdStr.isBlank())
-                    ? UUID.randomUUID()
-                    : UUID.fromString(userIdStr);
+            userId = UUID.fromString(userIdStr);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Invalid UUID format. Please provide a valid UUID."));
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "Invalid UUID format. Please provide a valid UUID."
+            ));
+        }
+        // ✅ 존재하지 않으면 FK로 insert가 터지므로 미리 400 처리
+        if (!userRepository.existsById(userId)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "User not found. Please provide an existing userId."
+            ));
         }
 
-        // 2. 토큰 생성: 구조가 분리되었어도 토큰은 동일한 userId(UUID)를 주체(Subject)로 가짐
+        // ✅ Access는 JWT
         String accessToken = jwtTokenProvider.createAccessToken(userId, "ROLE_USER");
-        String refreshToken = jwtTokenProvider.createRefreshToken(userId);
 
-        // 3. 응답 구성: 테스트 가이드 메시지 추가
+        // ✅ Refresh는 DB(stateful)로 발급 (raw 반환)
+        String refreshToken = refreshTokenService.issue(userId);
+
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("userId", userId);
         response.put("accessToken", accessToken);
         response.put("refreshToken", refreshToken);
         response.put("tokenType", "Bearer");
+        response.put("expiresInSeconds", jwtTokenProvider.getAccessExpiresInSeconds());
+        response.put("rotated", true); // ✅ refresh는 새로 발급된 값이므로 교체 저장 신호
+
         response.put("context", "This token simulates a user regardless of UserAuth or UserIdentity storage.");
         response.put("usage", "Add 'Authorization: Bearer <accessToken>' to your request headers.");
 

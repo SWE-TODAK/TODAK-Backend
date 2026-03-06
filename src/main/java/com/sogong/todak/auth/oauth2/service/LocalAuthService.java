@@ -1,12 +1,13 @@
 package com.sogong.todak.auth.oauth2.service;
 
+import com.sogong.todak.auth.domain.AuthProvider;
 import com.sogong.todak.auth.dto.request.LoginRequest;
 import com.sogong.todak.auth.dto.request.SignupRequest;
 import com.sogong.todak.auth.dto.response.AuthResponse;
 import com.sogong.todak.auth.dto.response.TokenPairResponse;
 import com.sogong.todak.auth.dto.response.UserSummaryResponse;
 import com.sogong.todak.auth.jwt.JwtTokenProvider;
-import com.sogong.todak.auth.domain.AuthProvider;
+import com.sogong.todak.auth.refresh.service.RefreshTokenService;
 import com.sogong.todak.user.entity.User;
 import com.sogong.todak.user.entity.UserAuth;
 import com.sogong.todak.user.repository.UserAuthRepository;
@@ -28,7 +29,9 @@ public class LocalAuthService {
     private final UserAuthRepository userAuthRepository;
     private final UserIdentityRepository userIdentityRepository;
     private final PasswordEncoder passwordEncoder;
+
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * 로컬 회원가입: User + UserAuth 생성 후 즉시 토큰 발급
@@ -59,7 +62,6 @@ public class LocalAuthService {
         // 3) UserAuth 생성 (비밀번호 해시)
         String hashed = passwordEncoder.encode(req.getPassword());
 
-        // ⚠️ UserAuth 생성자/빌더는 네 엔티티에 맞춰 조정해줘
         UserAuth userAuth = UserAuth.builder()
                 .user(user)
                 .passwordHash(hashed)
@@ -67,7 +69,7 @@ public class LocalAuthService {
 
         userAuthRepository.save(userAuth);
 
-        // 4) 토큰 발급
+        // 4) 토큰 발급 (Access=JWT, Refresh=DB stateful raw)
         TokenPairResponse token = issueTokenPair(user.getUserId());
 
         // 5) providers 구성 (LOCAL + 연결된 소셜들)
@@ -82,12 +84,14 @@ public class LocalAuthService {
 
     /**
      * 로컬 로그인: email/password 검증 후 토큰 발급
+     *
+     * 주의: refresh 발급(INSERT)이 발생하므로 readOnly=true면 안 됨
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest req) {
         String email = normalizeEmail(req.getEmail());
 
-        // 1) email로 UserAuth 조회(권장) - user까지 로딩된 상태라고 가정
+        // 1) email로 UserAuth 조회 - user까지 로딩된 상태라고 가정
         UserAuth userAuth = userAuthRepository.findByUser_Email(email)
                 .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
 
@@ -117,13 +121,14 @@ public class LocalAuthService {
 
     private TokenPairResponse issueTokenPair(UUID userId) {
         String access = jwtTokenProvider.createAccessToken(userId, "ROLE_USER");
-        String refresh = jwtTokenProvider.createRefreshToken(userId);
+        String refreshRaw = refreshTokenService.issue(userId);
 
         return TokenPairResponse.builder()
                 .tokenType("Bearer")
                 .accessToken(access)
-                .refreshToken(refresh)
+                .refreshToken(refreshRaw)
                 .expiresInSeconds(jwtTokenProvider.getAccessExpiresInSeconds())
+                .rotated(true) // ✅ 새 refresh 발급(클라 저장 강제 신호)
                 .build();
     }
 
@@ -134,7 +139,6 @@ public class LocalAuthService {
         providers.add(AuthProvider.LOCAL.name());
 
         // 연결된 소셜 providers 추가
-        // (findAllByUser_UserId 메서드가 없으면 findAllByUser(user)로 바꿔줘)
         var identities = userIdentityRepository.findAllByUser_UserId(user.getUserId());
 
         providers.addAll(
@@ -144,7 +148,6 @@ public class LocalAuthService {
                         .collect(Collectors.toList())
         );
 
-        // 정렬은 선택(프론트 안정성)
         providers = providers.stream().distinct().sorted().toList();
 
         return UserSummaryResponse.builder()
