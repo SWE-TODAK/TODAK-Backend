@@ -54,3 +54,11 @@ logging:
 
 springdoc:
   swagger-ui:
+    path: /swagger-ui.html
+
+aws:
+  s3:
+    bucket: todak-recordings
+    region: ap-northeast-2
+    prefix: recordings
+    presign-exp-min: 10
