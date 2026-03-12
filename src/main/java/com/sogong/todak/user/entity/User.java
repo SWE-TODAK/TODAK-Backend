@@ -70,4 +70,24 @@ public class User {
         this.profileImageUrl = profileImageUrl;
         this.birthDate = birthDate;
     }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updateEmail(String email) {
+        this.email = email;
+    }
+
+    public void updateBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
+
+    public void updateGender(Gender gender) {
+        this.gender = gender;
+    }
 }
