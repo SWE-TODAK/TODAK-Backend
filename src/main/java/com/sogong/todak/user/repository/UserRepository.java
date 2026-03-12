@@ -1,6 +1,7 @@
 package com.sogong.todak.user.repository;
 
 import com.sogong.todak.user.entity.User;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -21,8 +22,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmail(String email);
 
+    Optional<User> findByUserId(UUID userId);
+
     /**
      * (추가 제안) 닉네임으로 사용자 조회
      */
     Optional<User> findByNickname(String nickname);
+
+    @EntityGraph(attributePaths = {"auth", "identities"})
+    Optional<User> findWithAuthAndIdentitiesByUserId(UUID userId);
 }
