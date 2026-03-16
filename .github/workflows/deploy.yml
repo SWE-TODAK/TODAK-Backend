@@ -43,3 +43,7 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd /home/${{ secrets.USERNAME }}/app
+            pkill -9 -f java || true
+            sleep 3
+            export $(grep -v '^#' .env | xargs)
+            nohup java -jar *.jar --spring.profiles.active=prod > app.log 2>&1 < /dev/null &
