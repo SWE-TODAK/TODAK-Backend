@@ -37,6 +37,12 @@ public class Recording {
     @Column(name = "sample_rate")
     private Integer sampleRate;
 
+    @Column(name = "title", length = 255)
+    private String title;
+
+    @Column(name = "memo", columnDefinition = "TEXT")
+    private String memo;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -65,6 +71,15 @@ public class Recording {
 
     public void markProcessing() {
         this.status = RecordingStatus.PROCESSING;
+        this.updatedAt = OffsetDateTime.now();
+    }
+    public void updateMemo(String memo) {
+        this.memo = memo;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    public void deleteMemo() {
+        this.memo = null;
         this.updatedAt = OffsetDateTime.now();
     }
 }
