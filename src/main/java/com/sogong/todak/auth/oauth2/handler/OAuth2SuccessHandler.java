@@ -26,16 +26,15 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private static final String ATTR_USER_ID = "app_user_id";
     private static final String ATTR_IS_NEW_USER = "is_new_user";
+    private static final String PLATFORM_WEB = "web";
+    private static final String PLATFORM_MOBILE = "mobile";
 
     private final ExchangeCodeStore exchangeCodeStore;
-
     private final AuthorizationRequestRepository<OAuth2AuthorizationRequest> cookieAuthRepo;
 
-    // 배포용
     @Value("${app.oauth2.mobile-callback-uri:todak://auth/callback}")
     private String mobileCallbackUri;
 
-    //로컬 테스트용
     @Value("${app.oauth2.web-callback-uri:http://localhost:3000/auth/callback}")
     private String webCallbackUri;
 
@@ -46,7 +45,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             Authentication authentication
     ) throws IOException {
 
-        // 캐시 억제 설정
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0");
         response.setHeader(HttpHeaders.PRAGMA, "no-cache");
 
@@ -60,23 +58,21 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
             String code = exchangeCodeStore.issue(userId, isNewUser);
 
-            // 형변환하여 호출
             clearAuthenticationAttributes(request, response);
 
-            boolean isBrowser = isLikelyBrowser(request);
-            String callback = isBrowser ? webCallbackUri : mobileCallbackUri;
+            String callback = resolveCallback(request);
 
             targetUrl = UriComponentsBuilder.fromUriString(callback)
                     .queryParam("code", code)
                     .build()
                     .toUriString();
 
-            log.info("OAuth2 Success: userId={}, issued exchangeCode, redirect={}", userId, callback);
+            log.info("OAuth2 Success: userId={}, issued exchangeCode, platform={}, redirect={}",
+                    userId, request.getParameter("platform"), callback);
 
         } catch (Exception e) {
             log.error("OAuth2 SuccessHandler failed", e);
 
-            // 실패 시에도 쿠키 정리
             clearAuthenticationAttributes(request, response);
 
             targetUrl = UriComponentsBuilder.fromUriString(webCallbackUri)
@@ -89,18 +85,34 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         response.sendRedirect(targetUrl);
     }
 
-    /**
-     * 쿠키 정리 로직을 별도 메서드로 추출 (형변환 포함)
-     */
     private void clearAuthenticationAttributes(HttpServletRequest request, HttpServletResponse response) {
         if (cookieAuthRepo instanceof HttpCookieOAuth2AuthorizationRequestRepository repository) {
             repository.removeAuthorizationRequestCookies(response);
         }
     }
 
+    private String resolveCallback(HttpServletRequest request) {
+        String platform = request.getParameter("platform");
+
+        if (PLATFORM_MOBILE.equalsIgnoreCase(platform)) {
+            return mobileCallbackUri;
+        }
+
+        if (PLATFORM_WEB.equalsIgnoreCase(platform)) {
+            return webCallbackUri;
+        }
+
+        return isLikelyBrowser(request) ? webCallbackUri : mobileCallbackUri;
+    }
+
     private boolean isLikelyBrowser(HttpServletRequest request) {
         String ua = request.getHeader("User-Agent");
-        return ua != null && (ua.contains("Chrome") || ua.contains("Edg") || ua.contains("Safari") || ua.contains("Firefox"));
+        return ua != null && (
+                ua.contains("Chrome")
+                        || ua.contains("Edg")
+                        || ua.contains("Safari")
+                        || ua.contains("Firefox")
+        );
     }
 
     private OAuth2User requireOAuth2User(Authentication authentication) {
@@ -113,14 +125,20 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private UUID extractUserId(OAuth2User principal) {
         Object attr = principal.getAttribute(ATTR_USER_ID);
-        if (attr == null) throw new IllegalStateException(ATTR_USER_ID + " is missing");
+        if (attr == null) {
+            throw new IllegalStateException(ATTR_USER_ID + " is missing");
+        }
         return (attr instanceof UUID uuid) ? uuid : UUID.fromString(attr.toString());
     }
 
     private boolean extractIsNewUser(OAuth2User principal) {
         Object attr = principal.getAttribute(ATTR_IS_NEW_USER);
-        if (attr instanceof Boolean bool) return bool;
-        if (attr instanceof String str) return Boolean.parseBoolean(str);
+        if (attr instanceof Boolean bool) {
+            return bool;
+        }
+        if (attr instanceof String str) {
+            return Boolean.parseBoolean(str);
+        }
         return false;
     }
 }
