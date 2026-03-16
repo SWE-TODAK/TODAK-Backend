@@ -1,13 +1,27 @@
+app:
+  server-url: http://3.34.99.179:8080
+  oauth2:
+    web-callback-uri: http://3.34.99.179:3000/auth/callback
+    mobile-callback-uri: todak://auth/callback
+    exchange-code-ttl-seconds: 300
+    exchange-code-cleanup-ms: 60000
+  security:
+    cookie:
+      secure: false
+  jwt:
+    cookie:
+      access-name: ACCESS_TOKEN
+      refresh-name: REFRESH_TOKEN
+      secure: false
+      same-site: Lax
+
 spring:
   datasource:
-    url: ${TODAK_DB_URL}
-    username: ${TODAK_DB_USER}
-    password: ${TODAK_DB_PASS}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-  flyway:
-    enabled: true #
+    url: ${TODAK_DB_URL:jdbc:postgresql://127.0.0.1:5432/todak_dev}
+    username: ${TODAK_DB_USER:todak_app}
+    password: ${TODAK_DB_PASS:}
+    driver-class-name: org.postgresql.Driver
+
   security:
     oauth2:
       client:
@@ -17,14 +31,34 @@ spring:
             client-secret: ${KAKAO_CLIENT_SECRET}
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
+            redirect-uri: "http://3.34.99.179:8080/login/oauth2/code/kakao"
             scope:
               - profile_nickname
+              - profile_image
               - account_email
             client-name: Kakao
         provider:
           kakao:
             authorization-uri: https://kauth.kakao.com/oauth/authorize
-            token-uri: https://kaccess.kakao.com/oauth/token
+            token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
+
+logging:
+  level:
+    com.sogong.todak: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web.client.RestTemplate: DEBUG
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+aws:
+  s3:
+    bucket: todak-recordings
+    region: ap-northeast-2
+    prefix: recordings
+    presign-exp-min: 10
