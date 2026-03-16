@@ -1,6 +1,7 @@
 package com.sogong.todak.user.service.impl;
 
 import com.sogong.todak.auth.domain.AuthProvider;
+import com.sogong.todak.common.exception.DuplicateResourceException;
 import com.sogong.todak.user.dto.request.UpdateBirthRequest;
 import com.sogong.todak.user.dto.request.UpdateEmailRequest;
 import com.sogong.todak.user.dto.request.UpdateGenderRequest;
@@ -77,7 +78,7 @@ public class UserServiceImpl implements UserService {
 
         if (!Objects.equals(nickname, currentNickname)
                 && userRepository.existsByNickname(nickname)) {
-            throw new IllegalArgumentException("이미 존재하는 닉네임입니다.");
+            throw new DuplicateResourceException("이미 존재하는 닉네임입니다.");
         }
 
         user.updateNickname(nickname);
@@ -93,7 +94,7 @@ public class UserServiceImpl implements UserService {
 
         if (!Objects.equals(email, currentEmail)
                 && userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
+            throw new DuplicateResourceException("이미 존재하는 이메일입니다.");
         }
 
         user.updateEmail(email);

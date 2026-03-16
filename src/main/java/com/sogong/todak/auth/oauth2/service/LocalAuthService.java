@@ -8,6 +8,7 @@ import com.sogong.todak.auth.dto.response.TokenPairResponse;
 import com.sogong.todak.auth.dto.response.UserSummaryResponse;
 import com.sogong.todak.auth.jwt.JwtTokenProvider;
 import com.sogong.todak.auth.refresh.service.RefreshTokenService;
+import com.sogong.todak.common.exception.DuplicateResourceException;
 import com.sogong.todak.user.entity.User;
 import com.sogong.todak.user.entity.UserAuth;
 import com.sogong.todak.user.repository.UserAuthRepository;
@@ -39,22 +40,24 @@ public class LocalAuthService {
     @Transactional
     public AuthResponse signup(SignupRequest req) {
         String email = normalizeEmail(req.getEmail());
+        String nickname = normalizeNickname(req.getNickname());
+        String profileImageUrl = normalizeProfileImageUrl(req.getProfileImageUrl());
 
         // 1) 중복 체크 (UX용)
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
+            throw new DuplicateResourceException("이미 존재하는 이메일입니다.");
         }
-        if (userRepository.existsByNickname(req.getNickname())) {
-            throw new IllegalArgumentException("이미 존재하는 닉네임입니다.");
+        if (userRepository.existsByNickname(nickname)) {
+            throw new DuplicateResourceException("이미 존재하는 닉네임입니다.");
         }
 
         // 2) User 생성
         User user = User.builder()
                 .email(email)
-                .nickname(req.getNickname())
+                .nickname(nickname)
                 .birthDate(req.getBirthDate())
                 .gender(req.getGender())
-                .profileImageUrl(null)
+                .profileImageUrl(profileImageUrl)
                 .build();
 
         user = userRepository.save(user);
@@ -163,5 +166,17 @@ public class LocalAuthService {
     private String normalizeEmail(String email) {
         if (email == null) return null;
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeNickname(String nickname) {
+        if (nickname == null) return null;
+        return nickname.trim();
+    }
+
+    private String normalizeProfileImageUrl(String profileImageUrl) {
+        if (profileImageUrl == null) return null;
+
+        String normalized = profileImageUrl.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

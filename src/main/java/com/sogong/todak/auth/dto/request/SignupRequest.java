@@ -26,4 +26,7 @@ public class SignupRequest {
     private LocalDate birthDate;
 
     private Gender gender;
+
+    @Size(max = 2048, message = "프로필 이미지 URL은 2048자 이하여야 합니다.")
+    private String profileImageUrl;
 }
