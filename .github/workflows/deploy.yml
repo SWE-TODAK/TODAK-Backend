@@ -26,7 +26,14 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build -x test
 
-      # 1. 빌드된 JAR 파일을 AWS 서버로 전송 (SCP)
+      - name: Make Directory on AWS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: mkdir -p /home/${{ secrets.USERNAME }}/app
+
       - name: Copy JAR to AWS
         uses: appleboy/scp-action@master
         with:
@@ -35,9 +42,8 @@ jobs:
           key: ${{ secrets.KEY }}
           source: "build/libs/*.jar"
           target: "/home/${{ secrets.USERNAME }}/app"
-          strip_components: 2 # build/libs 경로를 제거하고 파일만 전송
+          strip_components: 2
 
-      # 2. 서버 접속 후 기존 프로세스 종료 및 재실행 (SSH)
       - name: Deploy to AWS
         uses: appleboy/ssh-action@master
         with:
@@ -46,7 +52,14 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd /home/${{ secrets.USERNAME }}/app
+            
             pkill -9 -f java || true
             sleep 3
-            export $(grep -v '^#' .env | xargs)
+            
+            if [ -f .env ]; then
+              set -a
+              source .env
+              set +a
+            fi
+            
             nohup java -jar *.jar --spring.profiles.active=prod > app.log 2>&1 < /dev/null &
