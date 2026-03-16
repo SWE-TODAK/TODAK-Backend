@@ -1,0 +1,147 @@
+package com.sogong.todak.auth.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sogong.todak.auth.dto.request.SignupRequest;
+import com.sogong.todak.auth.dto.response.AuthResponse;
+import com.sogong.todak.auth.jwt.JwtTokenProvider;
+import com.sogong.todak.auth.oauth2.service.LocalAuthService;
+import com.sogong.todak.auth.oauth2.service.OAuthExchangeService;
+import com.sogong.todak.auth.refresh.service.RefreshTokenService;
+import com.sogong.todak.common.exception.DuplicateResourceException;
+import com.sogong.todak.common.exception.GlobalExceptionHandler;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+
+import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+class AuthControllerValidationTest {
+
+    private MockMvc mockMvc;
+    private LocalAuthService localAuthService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    void setUp() {
+        localAuthService = mock(LocalAuthService.class);
+        OAuthExchangeService oAuthExchangeService = mock(OAuthExchangeService.class);
+        RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+        JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
+
+        AuthController controller = new AuthController(
+                localAuthService,
+                oAuthExchangeService,
+                refreshTokenService,
+                jwtTokenProvider
+        );
+        ReflectionTestUtils.setField(controller, "kakaoAuthorizationUri", "/oauth2/authorization/kakao");
+
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .setValidator(validator)
+                .build();
+    }
+
+    @Test
+    @DisplayName("회원가입 요청에 nickname이 없으면 400을 반환한다")
+    void localSignupWithoutNicknameReturnsBadRequest() throws Exception {
+        Map<String, Object> request = Map.of(
+                "email", "test@example.com",
+                "password", "password1234"
+        );
+
+        mockMvc.perform(post("/api/v1/auth/local/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("닉네임은 필수입니다."))
+                .andExpect(jsonPath("$.path").value("/api/v1/auth/local/signup"));
+    }
+
+    @Test
+    @DisplayName("회원가입 시 중복 이메일 또는 닉네임이면 409를 반환한다")
+    void localSignupDuplicateReturnsConflict() throws Exception {
+        when(localAuthService.signup(any()))
+                .thenThrow(new DuplicateResourceException("이미 존재하는 이메일입니다."));
+
+        Map<String, Object> request = Map.of(
+                "email", "test@example.com",
+                "password", "password1234",
+                "nickname", "tester"
+        );
+
+        mockMvc.perform(post("/api/v1/auth/local/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이미 존재하는 이메일입니다."))
+                .andExpect(jsonPath("$.path").value("/api/v1/auth/local/signup"));
+    }
+
+    @Test
+    @DisplayName("회원가입 중 DB unique 제약 위반이 발생해도 409를 반환한다")
+    void localSignupDataIntegrityViolationReturnsConflict() throws Exception {
+        when(localAuthService.signup(any()))
+                .thenThrow(new DataIntegrityViolationException(
+                        "could not execute statement",
+                        new RuntimeException("duplicate key value violates unique constraint \"ux_users_nickname\"")
+                ));
+
+        Map<String, Object> request = Map.of(
+                "email", "test@example.com",
+                "password", "password1234",
+                "nickname", "tester"
+        );
+
+        mockMvc.perform(post("/api/v1/auth/local/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이미 존재하는 닉네임입니다."))
+                .andExpect(jsonPath("$.path").value("/api/v1/auth/local/signup"));
+    }
+
+    @Test
+    @DisplayName("회원가입 요청은 profileImageUrl을 함께 바인딩한다")
+    void localSignupBindsProfileImageUrl() throws Exception {
+        when(localAuthService.signup(any())).thenReturn(AuthResponse.builder().build());
+
+        Map<String, Object> request = Map.of(
+                "email", "test@example.com",
+                "password", "password1234",
+                "nickname", "tester",
+                "profileImageUrl", "https://cdn.todak.com/profile/tester.png"
+        );
+
+        mockMvc.perform(post("/api/v1/auth/local/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<SignupRequest> captor = ArgumentCaptor.forClass(SignupRequest.class);
+        verify(localAuthService).signup(captor.capture());
+        Assertions.assertEquals(
+                "https://cdn.todak.com/profile/tester.png",
+                captor.getValue().getProfileImageUrl()
+        );
+    }
+}
