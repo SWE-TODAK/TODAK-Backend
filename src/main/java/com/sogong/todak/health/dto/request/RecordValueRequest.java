@@ -10,4 +10,10 @@ public class RecordValueRequest {
     private Integer systolic;
     private Integer diastolic;
     private LocalDateTime recordedAt;
+    private Integer beforeMeal;
+    private Integer afterMeal;
+    private Double totalChol;
+    private Double triglyceride;
+    private Double hdl;
+    private Double ldl;
 }

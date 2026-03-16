@@ -8,4 +8,5 @@ import lombok.NoArgsConstructor;
 public class CreateMetricRequest {
     private String name;
     private String unit;
+    private String metricType;
 }

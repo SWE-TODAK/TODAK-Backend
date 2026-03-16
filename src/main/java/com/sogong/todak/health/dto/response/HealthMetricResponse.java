@@ -9,4 +9,7 @@ public class HealthMetricResponse {
     private String metricId;
     private String name;
     private boolean isCustom;
+
+    private String unit;
+    private String metricType;
 }

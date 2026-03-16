@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Repository
 public interface HealthMetricValueRepository extends JpaRepository<HealthMetricValue, UUID> {
-    // 특정 지표의 최신 기록을 limit 개수만큼 조회 (그래프용)
     List<HealthMetricValue> findByHealthMetric_IdOrderByRecordedAtDesc(UUID metricId, Pageable pageable);
+
+    void deleteByHealthMetric_Id(UUID metricId);
 }
