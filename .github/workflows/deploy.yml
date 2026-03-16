@@ -43,12 +43,3 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd /home/${{ secrets.USERNAME }}/app
-            
-            # 기존 서버 종료
-            fuser -k 8080/tcp || true
-            
-            # .env 파일이 있다면 환경변수로 읽어와서 실행
-            # 만약 .env 파일이 서버에 없다면 미리 생성해둬야 합니다.
-            export $(grep -v '^#' .env | xargs)
-            
-            nohup java -jar *.jar --spring.profiles.active=dev > app.log 2>&1 &

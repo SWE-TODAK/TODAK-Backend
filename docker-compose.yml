@@ -18,5 +18,17 @@ services:
       timeout: 3s
       retries: 20
 
+  backend:
+    image: hongseo7/todak-backend:latest
+    container_name: todak-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   todak_pgdata:
