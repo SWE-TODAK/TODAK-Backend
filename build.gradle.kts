@@ -62,6 +62,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("com.h2database:h2")
+
+    //S3Presigner
+    implementation("software.amazon.awssdk:s3:2.31.22")
 }
 
 tasks.withType<Test> {
