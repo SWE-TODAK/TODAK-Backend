@@ -45,15 +45,6 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd /home/${{ secrets.USERNAME }}/app
-            
-            pkill -9 -f java || true            fuser -k 8080/tcp || true
-
-            sleep 3
-            
-            if [ -f .env ]; then
-              set -a
-              source .env
-              set +a
-            fi
-            
+            fuser -k 8080/tcp || true
+            export $(grep -v '^#' .env | xargs)            
             nohup java -jar *.jar --spring.profiles.active=prod > app.log 2>&1 < /dev/null &
