@@ -83,4 +83,14 @@ public class Recording {
         this.memo = null;
         this.updatedAt = OffsetDateTime.now();
     }
+
+    public void markDone() {
+        this.status = RecordingStatus.DONE;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    public void markFailed() {
+        this.status = RecordingStatus.FAILED;
+        this.updatedAt = OffsetDateTime.now();
+    }
 }
