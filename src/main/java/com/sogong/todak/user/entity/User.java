@@ -75,6 +75,10 @@ public class User {
         this.profileImageUrl = profileImageUrl;
     }
 
+    public void removeProfileImageUrl() {
+        this.profileImageUrl = null;
+    }
+
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }

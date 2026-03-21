@@ -9,11 +9,9 @@ import com.sogong.todak.auth.oauth2.service.OAuthExchangeService;
 import com.sogong.todak.auth.refresh.service.RefreshTokenService;
 import com.sogong.todak.common.exception.DuplicateResourceException;
 import com.sogong.todak.common.exception.GlobalExceptionHandler;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -25,7 +23,6 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -121,27 +118,28 @@ class AuthControllerValidationTest {
     }
 
     @Test
-    @DisplayName("회원가입 요청은 profileImageUrl을 함께 바인딩한다")
-    void localSignupBindsProfileImageUrl() throws Exception {
+    @DisplayName("회원가입 요청 스펙에는 profileImageUrl 필드가 없다")
+    void signupRequestDoesNotDeclareProfileImageUrl() {
+        boolean hasProfileImageField = java.util.Arrays.stream(SignupRequest.class.getDeclaredFields())
+                .anyMatch(field -> field.getName().equals("profileImageUrl"));
+
+        org.junit.jupiter.api.Assertions.assertFalse(hasProfileImageField);
+    }
+
+    @Test
+    @DisplayName("회원가입 요청은 프로필 이미지 없이도 생성된다")
+    void localSignupWithoutProfileImageReturnsCreated() throws Exception {
         when(localAuthService.signup(any())).thenReturn(AuthResponse.builder().build());
 
         Map<String, Object> request = Map.of(
                 "email", "test@example.com",
                 "password", "password1234",
-                "nickname", "tester",
-                "profileImageUrl", "https://cdn.todak.com/profile/tester.png"
+                "nickname", "tester"
         );
 
         mockMvc.perform(post("/api/v1/auth/local/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
-
-        ArgumentCaptor<SignupRequest> captor = ArgumentCaptor.forClass(SignupRequest.class);
-        verify(localAuthService).signup(captor.capture());
-        Assertions.assertEquals(
-                "https://cdn.todak.com/profile/tester.png",
-                captor.getValue().getProfileImageUrl()
-        );
     }
 }
