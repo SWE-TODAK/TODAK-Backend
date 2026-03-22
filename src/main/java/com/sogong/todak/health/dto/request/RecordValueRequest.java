@@ -6,9 +6,6 @@ import java.time.LocalDateTime;
 @Getter
 public class RecordValueRequest {
     private String metricId;
-
-    private String metricType;
-
     private Double value;
     private Integer systolic;
     private Integer diastolic;

@@ -4,9 +4,6 @@ on:
   push:
     branches: [ main ]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -35,8 +32,9 @@ jobs:
           key: ${{ secrets.KEY }}
           source: "build/libs/*.jar"
           target: "/home/${{ secrets.USERNAME }}/app"
-          strip_components: 2
+          strip_components: 2 # build/libs 경로를 제거하고 파일만 전송
 
+      # 2. 서버 접속 후 기존 프로세스 종료 및 재실행 (SSH)
       - name: Deploy to AWS
         uses: appleboy/ssh-action@master
         with:
@@ -45,6 +43,9 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd /home/${{ secrets.USERNAME }}/app
+            
             fuser -k 8080/tcp || true
-            export $(grep -v '^#' .env | xargs)            
-            nohup java -jar *.jar --spring.profiles.active=prod > app.log 2>&1 < /dev/null &
+            
+            export $(grep -v '^#' .env | xargs)
+            
+            nohup java -jar *.jar --spring.profiles.active=prod > app.log 2>&1 &

@@ -1,9 +1,7 @@
 package com.sogong.todak.auth.oauth2.handler;
 
-import com.sogong.todak.auth.oauth2.cookie.CookieUtils;
 import com.sogong.todak.auth.oauth2.cookie.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.sogong.todak.auth.oauth2.exchange.ExchangeCodeStore;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +14,6 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequ
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
@@ -61,8 +58,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
             String code = exchangeCodeStore.issue(userId, isNewUser);
 
-            String callback = resolveCallback(request);
             clearAuthenticationAttributes(request, response);
+
+            String callback = resolveCallback(request);
 
             targetUrl = UriComponentsBuilder.fromUriString(callback)
                     .queryParam("code", code)
@@ -70,7 +68,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                     .toUriString();
 
             log.info("OAuth2 Success: userId={}, issued exchangeCode, platform={}, redirect={}",
-                    userId, resolvePlatform(request), callback);
+                    userId, request.getParameter("platform"), callback);
 
         } catch (Exception e) {
             log.error("OAuth2 SuccessHandler failed", e);
@@ -94,12 +92,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     }
 
     private String resolveCallback(HttpServletRequest request) {
-        String redirectUri = readCookie(request, HttpCookieOAuth2AuthorizationRequestRepository.REDIRECT_URI_PARAM_COOKIE_NAME);
-        if (StringUtils.hasText(redirectUri)) {
-            return redirectUri;
-        }
-
-        String platform = resolvePlatform(request);
+        String platform = request.getParameter("platform");
 
         if (PLATFORM_MOBILE.equalsIgnoreCase(platform)) {
             return mobileCallbackUri;
@@ -110,22 +103,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         }
 
         return isLikelyBrowser(request) ? webCallbackUri : mobileCallbackUri;
-    }
-
-    private String resolvePlatform(HttpServletRequest request) {
-        String platform = request.getParameter(HttpCookieOAuth2AuthorizationRequestRepository.PLATFORM_PARAM_COOKIE_NAME);
-        if (StringUtils.hasText(platform)) {
-            return platform;
-        }
-
-        return readCookie(request, HttpCookieOAuth2AuthorizationRequestRepository.PLATFORM_PARAM_COOKIE_NAME);
-    }
-
-    private String readCookie(HttpServletRequest request, String cookieName) {
-        return CookieUtils.getCookie(request, cookieName)
-                .map(Cookie::getValue)
-                .filter(StringUtils::hasText)
-                .orElse(null);
     }
 
     private boolean isLikelyBrowser(HttpServletRequest request) {
