@@ -16,6 +16,8 @@ public interface UserService {
 
     void updateProfileImage(UpdateProfileImageRequest request);
 
+    void deleteProfileImage();
+
     void updateNickname(UpdateNicknameRequest request);
 
     void updateEmail(UpdateEmailRequest request);
