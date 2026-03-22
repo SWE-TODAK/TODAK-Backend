@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,30 +60,16 @@ public class UserController {
     }
 
     @Operation(
-            summary = "프로필 이미지 등록/수정",
-            description = "현재 로그인 사용자의 프로필 이미지를 등록하거나 수정합니다."
+            summary = "프로필 이미지 수정",
+            description = "현재 로그인 사용자의 프로필 이미지를 수정합니다."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "등록/수정 성공"),
+            @ApiResponse(responseCode = "204", description = "수정 성공"),
             @ApiResponse(responseCode = "401", description = "인증 실패")
     })
     @PatchMapping("/me/profile/image")
     public ResponseEntity<Void> updateProfileImage(@Valid @RequestBody UpdateProfileImageRequest request) {
         userService.updateProfileImage(request);
-        return ResponseEntity.noContent().build();
-    }
-
-    @Operation(
-            summary = "프로필 이미지 삭제",
-            description = "현재 로그인 사용자의 프로필 이미지를 삭제합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "삭제 성공"),
-            @ApiResponse(responseCode = "401", description = "인증 실패")
-    })
-    @DeleteMapping("/me/profile/image")
-    public ResponseEntity<Void> deleteProfileImage() {
-        userService.deleteProfileImage();
         return ResponseEntity.noContent().build();
     }
 

@@ -41,6 +41,7 @@ public class LocalAuthService {
     public AuthResponse signup(SignupRequest req) {
         String email = normalizeEmail(req.getEmail());
         String nickname = normalizeNickname(req.getNickname());
+        String profileImageUrl = normalizeProfileImageUrl(req.getProfileImageUrl());
 
         // 1) 중복 체크 (UX용)
         if (userRepository.existsByEmail(email)) {
@@ -56,6 +57,7 @@ public class LocalAuthService {
                 .nickname(nickname)
                 .birthDate(req.getBirthDate())
                 .gender(req.getGender())
+                .profileImageUrl(profileImageUrl)
                 .build();
 
         user = userRepository.save(user);
@@ -171,4 +173,10 @@ public class LocalAuthService {
         return nickname.trim();
     }
 
+    private String normalizeProfileImageUrl(String profileImageUrl) {
+        if (profileImageUrl == null) return null;
+
+        String normalized = profileImageUrl.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
 }

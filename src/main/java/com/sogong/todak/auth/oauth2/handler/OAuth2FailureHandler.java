@@ -59,17 +59,10 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
                 HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_AUTH_REQUEST_COOKIE_NAME
         ).isPresent();
 
-        String redirectUri = CookieUtils.getCookie(
-                request,
-                HttpCookieOAuth2AuthorizationRequestRepository.REDIRECT_URI_PARAM_COOKIE_NAME
-        ).map(jakarta.servlet.http.Cookie::getValue).orElse(null);
-
-        String failureUrl = StringUtils.hasText(redirectUri) ? redirectUri : failureRedirectUrl;
-
         // error 파라미터는 없는데 쿠키도 없다?
         // => 정상 로그인 성공 후 콜백 URL 새로고침/중복 진입/만료 등
         if (!hasProviderErrorParam && !hasAuthRequestCookie) {
-            String targetUrl = UriComponentsBuilder.fromUriString(failureUrl)
+            String targetUrl = UriComponentsBuilder.fromUriString(failureRedirectUrl)
                     .queryParam("success", false)
                     .queryParam("error", "auth_request_missing") // 프론트에서 안내 문구 처리
                     .build()
@@ -82,7 +75,7 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
 
         String errorCode = classify(exception);
 
-        String targetUrl = UriComponentsBuilder.fromUriString(failureUrl)
+        String targetUrl = UriComponentsBuilder.fromUriString(failureRedirectUrl)
                 .queryParam("success", false)
                 .queryParam("error", errorCode)
                 .build()

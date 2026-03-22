@@ -70,13 +70,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void deleteProfileImage() {
-        User user = getCurrentUserForUpdate();
-        user.removeProfileImageUrl();
-    }
-
-    @Override
-    @Transactional
     public void updateNickname(UpdateNicknameRequest request) {
         User user = getCurrentUserForUpdate();
 

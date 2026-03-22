@@ -13,7 +13,6 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 
     public static final String OAUTH2_AUTH_REQUEST_COOKIE_NAME = "oauth2_auth_request";
     public static final String REDIRECT_URI_PARAM_COOKIE_NAME = "redirect_uri";
-    public static final String PLATFORM_PARAM_COOKIE_NAME = "platform";
     private static final int COOKIE_EXPIRE_SECONDS = 180; // 3분
 
     private final boolean cookieSecure;
@@ -84,18 +83,6 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
                     cookieSecure
             );
         }
-
-        String platform = request.getParameter(PLATFORM_PARAM_COOKIE_NAME);
-        if (StringUtils.hasText(platform)) {
-            CookieUtils.addCookie(
-                    response,
-                    PLATFORM_PARAM_COOKIE_NAME,
-                    platform,
-                    COOKIE_EXPIRE_SECONDS,
-                    cookieHttpOnly,
-                    cookieSecure
-            );
-        }
     }
 
     @Override
@@ -108,6 +95,5 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
     public void removeAuthorizationRequestCookies(HttpServletResponse response) {
         CookieUtils.deleteCookie(response, OAUTH2_AUTH_REQUEST_COOKIE_NAME);
         CookieUtils.deleteCookie(response, REDIRECT_URI_PARAM_COOKIE_NAME);
-        CookieUtils.deleteCookie(response, PLATFORM_PARAM_COOKIE_NAME);
     }
 }
