@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +34,19 @@ public class HealthService {
     private final HealthMetricValueRepository valueRepository;
     private final UserRepository userRepository;
 
-    //  프론트엔드의 m-1 고정값을 백엔드 정보와 맵핑해주는 설정
+    // 상수로 매직 스트링 관리 (오타 방지)
+    private static final String TYPE_BLOOD_PRESSURE = "BLOOD_PRESSURE";
+    private static final String TYPE_WEIGHT = "WEIGHT";
+    private static final String TYPE_BLOOD_SUGAR = "BLOOD_SUGAR";
+    private static final String TYPE_CHOLESTEROL = "CHOLESTEROL";
+    private static final String TYPE_HEART = "HEART";
+    private static final String TYPE_LIVER = "LIVER";
+    private static final String TYPE_KIDNEY = "KIDNEY";
+    private static final String TYPE_CUSTOM = "CUSTOM";
+
+    // 한국 시간대 고정 설정
+    private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
+
     private static class DefaultMetricInfo {
         String metricId;
         String name;
@@ -49,13 +62,13 @@ public class HealthService {
     }
 
     private static final List<DefaultMetricInfo> DEFAULT_METRICS = List.of(
-            new DefaultMetricInfo("m-1", "혈압", "mmHg", "BLOOD_PRESSURE"),
-            new DefaultMetricInfo("m-2", "체중", "kg", "WEIGHT"),
-            new DefaultMetricInfo("m-3", "혈당", "mg/dL", "BLOOD_SUGAR"),
-            new DefaultMetricInfo("m-4", "콜레스테롤", "mg/dL", "CHOLESTEROL"),
-            new DefaultMetricInfo("m-5", "심박수", "bpm", "HEART"),
-            new DefaultMetricInfo("m-6", "간 수치", "IU/L", "LIVER"),
-            new DefaultMetricInfo("m-7", "신장 수치", "mg/dL", "KIDNEY")
+            new DefaultMetricInfo("m-1", "혈압", "mmHg", TYPE_BLOOD_PRESSURE),
+            new DefaultMetricInfo("m-2", "체중", "kg", TYPE_WEIGHT),
+            new DefaultMetricInfo("m-3", "혈당", "mg/dL", TYPE_BLOOD_SUGAR),
+            new DefaultMetricInfo("m-4", "콜레스테롤", "mg/dL", TYPE_CHOLESTEROL),
+            new DefaultMetricInfo("m-5", "심박수", "bpm", TYPE_HEART),
+            new DefaultMetricInfo("m-6", "간 수치", "IU/L", TYPE_LIVER),
+            new DefaultMetricInfo("m-7", "신장 수치", "mg/dL", TYPE_KIDNEY)
     );
 
     private DefaultMetricInfo getDefaultMetricInfo(String metricId) {
@@ -65,12 +78,11 @@ public class HealthService {
                 .orElseThrow(() -> new IllegalArgumentException("잘못된 기본 지표 ID입니다: " + metricId));
     }
 
-    // 1. 나의 건강지표 목록 조회 (GET)
+    // 1. 나의 건강지표 목록 조회
     @Transactional(readOnly = true)
     public List<HealthMetricResponse> getMyMetrics(UUID userId) {
         List<HealthMetricResponse> responses = new ArrayList<>();
 
-        // ① 프론트엔드가 요구한 기본 지표 7개를 항상 상단에 고정 출력 (m-1 ~ m-7)
         for (DefaultMetricInfo info : DEFAULT_METRICS) {
             responses.add(HealthMetricResponse.builder()
                     .metricId(info.metricId)
@@ -81,14 +93,14 @@ public class HealthService {
                     .build());
         }
 
-        // ② 유저가 DB에 만든 '나만의 커스텀 지표'만 추가
+        //  findAllByUser_Id -> findAllByUser_UserId 로 복구
         List<HealthMetric> customMetrics = metricRepository.findAllByUser_UserId(userId).stream()
                 .filter(HealthMetric::isCustom)
                 .collect(Collectors.toList());
 
         for (HealthMetric m : customMetrics) {
             responses.add(HealthMetricResponse.builder()
-                    .metricId(m.getId().toString()) // 커스텀은 UUID 그대로 전달
+                    .metricId(m.getId().toString())
                     .name(m.getName())
                     .unit(m.getUnit())
                     .isCustom(true)
@@ -99,41 +111,10 @@ public class HealthService {
         return responses;
     }
 
-    // 2. 건강 수치 추가 (POST)
+    // 2. 건강 수치 추가
     @Transactional
     public UUID recordValue(UUID userId, RecordValueRequest request) {
-        String reqMetricId = request.getMetricId();
-        HealthMetric metric;
-
-        // 프론트에서 "m-1" 같은 글자를 보낸 경우 (기본 지표)
-        if (reqMetricId != null && reqMetricId.startsWith("m-")) {
-            DefaultMetricInfo defaultInfo = getDefaultMetricInfo(reqMetricId);
-
-            // 이 유저의 DB에 해당 기본 지표 기록용 테이블이 없으면 몰래 자동 생성해줍니다.
-            metric = metricRepository.findAllByUser_UserId(userId).stream()
-                    .filter(m -> !m.isCustom() && m.getMetricType().equals(defaultInfo.metricType))
-                    .findFirst()
-                    .orElseGet(() -> {
-                        User user = userRepository.findById(userId)
-                                .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
-                        HealthMetric newMetric = HealthMetric.builder()
-                                .user(user)
-                                .name(defaultInfo.name)
-                                .unit(defaultInfo.unit)
-                                .isCustom(false)
-                                .metricType(defaultInfo.metricType)
-                                .build();
-                        return metricRepository.save(newMetric);
-                    });
-        } else {
-            // 커스텀 지표인 경우 (UUID)
-            metric = metricRepository.findById(UUID.fromString(reqMetricId))
-                    .orElseThrow(() -> new IllegalArgumentException("지표를 찾을 수 없습니다."));
-
-            if (!metric.getUser().getUserId().equals(userId)) {
-                throw new IllegalArgumentException("본인의 건강 지표에만 수치를 추가할 수 있습니다.");
-            }
-        }
+        HealthMetric metric = resolveMetricForUser(userId, request.getMetricId());
 
         HealthMetricValue value = HealthMetricValue.builder()
                 .healthMetric(metric)
@@ -146,13 +127,14 @@ public class HealthService {
                 .triglyceride(request.getTriglyceride())
                 .hdl(request.getHdl())
                 .ldl(request.getLdl())
-                .recordedAt(request.getRecordedAt() != null ? request.getRecordedAt() : LocalDateTime.now())
+                // 한국 시간대 명시적 적용
+                .recordedAt(request.getRecordedAt() != null ? request.getRecordedAt() : LocalDateTime.now(KST_ZONE))
                 .build();
 
         return valueRepository.save(value).getId();
     }
 
-    // 3. 건강 수치 추이 조회 (GET)
+    // 3. 건강 수치 추이 조회
     @Transactional(readOnly = true)
     public MetricQueryResponse getMetricHistory(UUID userId, String reqMetricId, int limit) {
         HealthMetric metric;
@@ -162,13 +144,13 @@ public class HealthService {
             DefaultMetricInfo defaultInfo = getDefaultMetricInfo(reqMetricId);
             metricType = defaultInfo.metricType;
 
+            // findAllByUser_Id -> findAllByUser_UserId
             metric = metricRepository.findAllByUser_UserId(userId).stream()
                     .filter(m -> !m.isCustom() && m.getMetricType().equals(defaultInfo.metricType))
                     .findFirst()
                     .orElse(null);
 
             if (metric == null) {
-                // 한 번도 기록한 적이 없으면 에러가 아니라 '빈 데이터'를 줍니다.
                 return MetricQueryResponse.builder()
                         .metricType(metricType)
                         .history(new ArrayList<>())
@@ -178,6 +160,7 @@ public class HealthService {
             metric = metricRepository.findById(UUID.fromString(reqMetricId))
                     .orElseThrow(() -> new IllegalArgumentException("지표를 찾을 수 없습니다."));
 
+            // getId() -> getUserId()
             if (!metric.getUser().getUserId().equals(userId)) {
                 throw new IllegalArgumentException("본인의 지표만 조회할 수 있습니다.");
             }
@@ -191,7 +174,7 @@ public class HealthService {
 
         List<MetricQueryResponse.HistoryDto> history = values.stream().map(v ->
                 MetricQueryResponse.HistoryDto.builder()
-                        .metricId(reqMetricId) // 프론트가 보냈던 "m-1" 글자를 그대로 응답
+                        .metricId(reqMetricId)
                         .date(v.getRecordedAt().format(formatter))
                         .systolic(v.getSystolic())
                         .diastolic(v.getDiastolic())
@@ -206,7 +189,7 @@ public class HealthService {
                 .build();
     }
 
-    // 4. 나만의 건강지표 수동 생성 (POST)
+    // 4. 나만의 건강지표 수동 생성
     @Transactional
     public UUID createCustomMetric(UUID userId, CreateMetricRequest request) {
         User user = userRepository.findById(userId)
@@ -217,7 +200,7 @@ public class HealthService {
                 .name(request.getName())
                 .unit(request.getUnit())
                 .isCustom(true)
-                .metricType(request.getMetricType() != null ? request.getMetricType() : "CUSTOM")
+                .metricType(request.getMetricType() != null ? request.getMetricType() : TYPE_CUSTOM)
                 .build();
 
         return metricRepository.save(metric).getId();
@@ -235,13 +218,13 @@ public class HealthService {
         List<ValueLabelDto> labels = new ArrayList<>();
         String type = m.getMetricType();
 
-        if ("BLOOD_PRESSURE".equalsIgnoreCase(type)) {
+        if (TYPE_BLOOD_PRESSURE.equalsIgnoreCase(type)) {
             labels.add(new ValueLabelDto("수축기", v.getSystolic() != null ? v.getSystolic().doubleValue() : 0.0));
             labels.add(new ValueLabelDto("이완기", v.getDiastolic() != null ? v.getDiastolic().doubleValue() : 0.0));
-        } else if ("BLOOD_SUGAR".equalsIgnoreCase(type)) {
+        } else if (TYPE_BLOOD_SUGAR.equalsIgnoreCase(type)) {
             labels.add(new ValueLabelDto("공복 혈당", v.getBeforeMeal() != null ? v.getBeforeMeal().doubleValue() : 0.0));
             labels.add(new ValueLabelDto("식후 혈당", v.getAfterMeal() != null ? v.getAfterMeal().doubleValue() : 0.0));
-        } else if ("CHOLESTEROL".equalsIgnoreCase(type)) {
+        } else if (TYPE_CHOLESTEROL.equalsIgnoreCase(type)) {
             labels.add(new ValueLabelDto("총 콜레스테롤", v.getTotalChol() != null ? v.getTotalChol() : 0.0));
             labels.add(new ValueLabelDto("중성지방", v.getTriglyceride() != null ? v.getTriglyceride() : 0.0));
         } else {
@@ -257,7 +240,7 @@ public class HealthService {
                 .build();
     }
 
-    // 6. 건강 지표 삭제 (DELETE)
+    // 6. 건강 지표 삭제
     @Transactional
     public void deleteMetric(UUID userId, String reqMetricId) {
         if (reqMetricId.startsWith("m-")) {
@@ -275,7 +258,7 @@ public class HealthService {
         metricRepository.delete(metric);
     }
 
-    // 7. 건강 수치 삭제 (DELETE)
+    // 7. 건강 수치 삭제
     @Transactional
     public void deleteMetricValue(UUID userId, UUID valueId) {
         HealthMetricValue value = valueRepository.findById(valueId)
@@ -286,5 +269,37 @@ public class HealthService {
         }
 
         valueRepository.delete(value);
+    }
+
+
+    private HealthMetric resolveMetricForUser(UUID userId, String reqMetricId) {
+        if (reqMetricId != null && reqMetricId.startsWith("m-")) {
+            DefaultMetricInfo defaultInfo = getDefaultMetricInfo(reqMetricId);
+
+            return metricRepository.findAllByUser_UserId(userId).stream()
+                    .filter(m -> !m.isCustom() && m.getMetricType().equals(defaultInfo.metricType))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        User user = userRepository.findById(userId)
+                                .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
+                        HealthMetric newMetric = HealthMetric.builder()
+                                .user(user)
+                                .name(defaultInfo.name)
+                                .unit(defaultInfo.unit)
+                                .isCustom(false)
+                                .metricType(defaultInfo.metricType)
+                                .build();
+                        return metricRepository.save(newMetric);
+                    });
+        } else {
+            HealthMetric metric = metricRepository.findById(UUID.fromString(reqMetricId))
+                    .orElseThrow(() -> new IllegalArgumentException("지표를 찾을 수 없습니다."));
+
+            // 에러 수정: getId() -> getUserId()
+            if (!metric.getUser().getUserId().equals(userId)) {
+                throw new IllegalArgumentException("본인의 건강 지표에만 수치를 추가할 수 있습니다.");
+            }
+            return metric;
+        }
     }
 }
