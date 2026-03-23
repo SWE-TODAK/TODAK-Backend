@@ -2,7 +2,7 @@ spring:
   application:
     name: todak
   profiles:
-    active: prod
+    active: dev
 
   jpa:
     open-in-view: false
