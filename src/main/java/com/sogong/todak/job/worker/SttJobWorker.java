@@ -3,6 +3,7 @@ package com.sogong.todak.job.worker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sogong.todak.ai.AiClient;
+import com.sogong.todak.ai.dto.AiSttData;
 import com.sogong.todak.ai.dto.AiSttResponse;
 import com.sogong.todak.ai.dto.SttByUrlRequest;
 import com.sogong.todak.job.entity.Job;
@@ -56,6 +57,7 @@ public class SttJobWorker {
     public void processSingleJob(UUID jobId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
+        log.info("Picked STT job. jobId={}, recordingId={}", job.getJobId(), job.getRecordingId());
 
         if (job.getJobType() != JobType.STT || job.getStatus() != JobStatus.QUEUED) {
             return;
@@ -68,6 +70,7 @@ public class SttJobWorker {
             job.markRunning();
 
             String downloadUrl = s3PresignService.presignGetUrl(recording.getStorageKey());
+            log.info("Generated download URL for recordingId={}", recording.getRecordingId());
 
             SttByUrlRequest request = new SttByUrlRequest(
                     recording.getRecordingId(),
@@ -82,41 +85,48 @@ public class SttJobWorker {
             );
 
             AiSttResponse response = aiClient.requestTranscriptionByUrl(request);
+            log.info("Calling AI STT server. recordingId={}", recording.getRecordingId());
 
-            Map<String, Object> data = response.data();
+            AiSttData data = response.data();
+            log.info("Received AI STT response. recordingId={}", recording.getRecordingId());
+
             if (data == null) {
                 throw new IllegalStateException("AI response data is null");
             }
 
-            String transcript = toStringValue(data.get("transcript"));
-            String language = toStringValue(data.get("language"));
+            log.info("Saving transcription. recordingId={}", recording.getRecordingId());
+            String transcript = data.transcript();
+            if (transcript == null || transcript.isBlank()) {
+                throw new IllegalStateException("Transcript is empty");
+            }
 
-            @SuppressWarnings("unchecked")
-            Map<String, Object> meta = (Map<String, Object>) data.get("meta");
+            String language = data.language();
+            Map<String, Object> meta = data.meta();
 
             String provider = meta != null ? toStringValue(meta.get("provider")) : null;
             String model = meta != null ? toStringValue(meta.get("model")) : null;
             String metaJson = toJson(meta);
 
-            transcriptionRepository.findByRecordingId(recording.getRecordingId())
-                    .ifPresentOrElse(
-                            existing -> {
-                                throw new IllegalStateException("Transcription already exists");
-                            },
-                            () -> transcriptionRepository.save(
-                                    Transcription.create(
-                                            recording.getRecordingId(),
-                                            transcript,
-                                            language,
-                                            provider,
-                                            model,
-                                            metaJson
-                                    )
-                            )
-                    );
+            var existing = transcriptionRepository.findByRecordingId(recording.getRecordingId());
+
+            if (existing.isPresent()) {
+                log.warn("Transcription already exists. recordingId={}", recording.getRecordingId());
+            } else {
+                transcriptionRepository.save(
+                        Transcription.create(
+                                recording.getRecordingId(),
+                                transcript,
+                                language,
+                                provider,
+                                model,
+                                metaJson
+                        )
+                );
+            }
 
             job.markSucceeded();
             recording.markDone();
+            log.info("STT job succeeded. jobId={}, recordingId={}", job.getJobId(), recording.getRecordingId());
 
         } catch (Exception e) {
             job.markFailed(truncate(e.getMessage()));
