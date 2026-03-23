@@ -46,10 +46,6 @@ public class LocalAuthService {
         if (userRepository.existsByEmailAndDeletedAtIsNull(email)) {
             throw new DuplicateResourceException("이미 존재하는 이메일입니다.");
         }
-        if (userRepository.existsByNicknameAndDeletedAtIsNull(nickname)) {
-            throw new DuplicateResourceException("이미 존재하는 닉네임입니다.");
-        }
-
         // 2) User 생성
         User user = User.builder()
                 .email(email)
