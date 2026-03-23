@@ -127,7 +127,7 @@ public class HealthService {
                 .hdl(request.getHdl())
                 .ldl(request.getLdl())
                 // 한국 시간대 명시적 적용
-                .recordedAt(request.getRecordedAt() != null ? request.getRecordedAt() : LocalDateTime.now(KST_ZONE))
+                .recordedAt(request.getDate() != null ? request.getDate() : LocalDateTime.now(KST_ZONE))
                 .build();
 
         return valueRepository.save(value).getId();
@@ -171,6 +171,7 @@ public class HealthService {
 
         List<MetricQueryResponse.HistoryDto> history = values.stream().map(v ->
                 MetricQueryResponse.HistoryDto.builder()
+                        .metricValueId(v.getId())
                         .metricId(reqMetricId)
                         .date(v.getRecordedAt().format(formatter))
                         .systolic(v.getSystolic())

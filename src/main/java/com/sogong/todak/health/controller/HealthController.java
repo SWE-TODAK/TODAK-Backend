@@ -72,7 +72,7 @@ public class HealthController {
                         "metricValueId", metricValueId,
                         "metricType", actualMetricType,
                         "value", request.getValue() != null ? request.getValue() : 0.0,
-                        "recordedAt", request.getRecordedAt() != null ? request.getRecordedAt() : LocalDateTime.now()
+                        "date", request.getDate() != null ? request.getDate() : LocalDateTime.now()
                 )
         ));
     }
