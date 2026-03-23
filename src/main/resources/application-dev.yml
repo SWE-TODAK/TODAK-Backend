@@ -38,6 +38,8 @@ spring:
               - profile_nickname
               - profile_image
               - account_email
+              - birthday
+              - birthyear
             client-name: Kakao
         provider:
           kakao:
@@ -68,4 +70,3 @@ aws:
 ai:
   base-url: http://127.0.0.1:8000
   internal-key: ${AI_INTERNAL_KEY}
-

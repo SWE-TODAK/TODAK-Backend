@@ -2,6 +2,7 @@ package com.sogong.todak.auth.oauth2.service;
 
 import com.sogong.todak.auth.domain.AuthProvider;
 import com.sogong.todak.auth.oauth2.userinfo.KakaoUserInfo;
+import com.sogong.todak.auth.oauth2.userinfo.OAuthUserProfile;
 import com.sogong.todak.user.entity.User;
 import com.sogong.todak.user.entity.UserIdentity;
 import com.sogong.todak.user.repository.UserIdentityRepository;
@@ -32,13 +33,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         // 1. 소셜 서비스로부터 사용자 정보 로드
-        OAuth2User oAuth2User = super.loadUser(userRequest);
+        OAuth2User oAuth2User = loadProviderUser(userRequest);
 
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
         AuthProvider provider = mapProvider(registrationId);
 
         // 2. 카카오 유저 정보 추출
         KakaoUserInfo kakaoUserInfo = new KakaoUserInfo(oAuth2User.getAttributes());
+        OAuthUserProfile userProfile = kakaoUserInfo.toUserProfile();
         String providerUserId = kakaoUserInfo.getProviderId();
 
         if (providerUserId == null) {
@@ -57,14 +59,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     }
                     return existingUser;
                 })
-                .orElseGet(() -> registerNewSocialUser(provider, kakaoUserInfo));
+                .orElseGet(() -> registerNewSocialUser(provider, kakaoUserInfo, userProfile));
 
         // 4. 최신 프로필 정보 동기화
-        user.syncOAuth2Profile(
-                kakaoUserInfo.getEmail(),
-                ensureUniqueNickname(kakaoUserInfo.getNickname()),
-                kakaoUserInfo.getProfileImageUrl(),
-                kakaoUserInfo.getBirthDate() // 추가: 생년월일 전달
+        user.applyOAuth2Profile(
+                OAuthUserProfile.builder()
+                        .email(userProfile.getEmail())
+                        .nickname(ensureNickname(userProfile.getNickname()))
+                        .profileImageUrl(userProfile.getProfileImageUrl())
+                        .birthDate(userProfile.getBirthDate())
+                        .build()
         );
 
         // 5. 성공 핸들러를 위한 추가 속성 구성
@@ -79,15 +83,17 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
      * 신규 소셜 사용자 등록
      * UserAuth(자체 비밀번호) 없이 User와 UserIdentity만 생성함
      */
-    private User registerNewSocialUser(AuthProvider provider, KakaoUserInfo userInfo) {
-        String nickname = normalizeNickname(userInfo.getNickname());
+    private User registerNewSocialUser(AuthProvider provider, KakaoUserInfo userInfo, OAuthUserProfile userProfile) {
+        if (userProfile.getBirthDate() == null) {
+            log.warn("Kakao birthDate is missing or invalid for providerUserId={}", userInfo.getProviderId());
+        }
 
         // 프로필 생성
         User newUser = User.builder()
-                .email(userInfo.getEmail())
-                .nickname(nickname)
-                .profileImageUrl(userInfo.getProfileImageUrl())
-                .birthDate(userInfo.getBirthDate())
+                .email(userProfile.getEmail())
+                .nickname(ensureNickname(userProfile.getNickname()))
+                .profileImageUrl(userProfile.getProfileImageUrl())
+                .birthDate(userProfile.getBirthDate())
                 .build();
 
         userRepository.save(newUser);
@@ -106,7 +112,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return newUser;
     }
 
-    private String ensureUniqueNickname(String nickname) {
+    private String ensureNickname(String nickname) {
         return normalizeNickname(nickname);
     }
 
@@ -124,5 +130,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private AuthProvider mapProvider(String id) {
         if ("kakao".equalsIgnoreCase(id)) return AuthProvider.KAKAO;
         throw new OAuth2AuthenticationException(new OAuth2Error("unsupported_provider"));
+    }
+
+    protected OAuth2User loadProviderUser(OAuth2UserRequest userRequest) {
+        return super.loadUser(userRequest);
     }
 }

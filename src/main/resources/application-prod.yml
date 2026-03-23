@@ -38,6 +38,8 @@ spring:
               - profile_nickname
               - profile_image
               - account_email
+              - birthday
+              - birthyear
             client-name: Kakao
         provider:
           kakao:
