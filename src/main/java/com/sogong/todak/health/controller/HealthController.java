@@ -39,12 +39,13 @@ public class HealthController {
         ));
     }
 
-    // 3. 건강 수치 추이 조회 (GET)
+    // 3. 건강 수치 추이 조회 (GET) - String metricId 적용 및 userId 추가
     @GetMapping("/metrics/{metricId}/query")
     public ResponseEntity<?> getMetricQuery(
-            @PathVariable UUID metricId,
+            @AuthenticationPrincipal UUID userId,
+            @PathVariable String metricId,
             @RequestParam(defaultValue = "5") int limit) {
-        var data = healthService.getMetricHistory(metricId, limit);
+        var data = healthService.getMetricHistory(userId, metricId, limit);
         return ResponseEntity.ok(Map.of("status", 200, "data", data));
     }
 
@@ -55,30 +56,32 @@ public class HealthController {
         return ResponseEntity.ok(Map.of("status", 200, "data", data));
     }
 
-    // 5. 건강 수치 추가 (POST) - 명세서 응답 구조 완벽 반영
+    // 5. 건강 수치 추가 (POST)
     @PostMapping("/metrics/batch")
     public ResponseEntity<?> recordMetricValue(
             @AuthenticationPrincipal UUID userId,
             @RequestBody RecordValueRequest request) {
 
         UUID metricValueId = healthService.recordValue(userId, request);
+        String actualMetricType = healthService.getMetricDetail(metricValueId).getMetricType();
+
         return ResponseEntity.ok(Map.of(
                 "status", 200,
                 "message", "수치가 저장되었습니다.",
                 "data", Map.of(
                         "metricValueId", metricValueId,
-                        "metricType", request.getMetricType() != null ? request.getMetricType() : "CUSTOM",
+                        "metricType", actualMetricType,
                         "value", request.getValue() != null ? request.getValue() : 0.0,
-                        "recordedAt", request.getRecordedAt() != null ? request.getRecordedAt() : LocalDateTime.now()
+                        "date", request.getDate() != null ? request.getDate() : LocalDateTime.now()
                 )
         ));
     }
 
-    // 6. 건강 지표 삭제 (DELETE)
+    // 6. 건강 지표 삭제 (DELETE) - String metricId 적용
     @DeleteMapping("/metrics/{metricId}")
     public ResponseEntity<?> deleteMetric(
             @AuthenticationPrincipal UUID userId,
-            @PathVariable UUID metricId) {
+            @PathVariable String metricId) {
 
         healthService.deleteMetric(userId, metricId);
         return ResponseEntity.ok(Map.of(

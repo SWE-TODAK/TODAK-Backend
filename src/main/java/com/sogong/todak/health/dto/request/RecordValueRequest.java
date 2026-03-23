@@ -12,7 +12,7 @@ public class RecordValueRequest {
     private Double value;
     private Integer systolic;
     private Integer diastolic;
-    private LocalDateTime recordedAt;
+    private LocalDateTime date;
     private Integer beforeMeal;
     private Integer afterMeal;
     private Double totalChol;
