@@ -70,7 +70,7 @@ public class SttJobWorker {
             job.markRunning();
 
             String downloadUrl = s3PresignService.presignGetUrl(recording.getStorageKey());
-            log.info("Generated download URL for recordingId={}", recording.getRecordingId());
+            log.debug("Generated download URL for recordingId={}", recording.getRecordingId());
 
             SttByUrlRequest request = new SttByUrlRequest(
                     recording.getRecordingId(),
@@ -85,16 +85,16 @@ public class SttJobWorker {
             );
 
             AiSttResponse response = aiClient.requestTranscriptionByUrl(request);
-            log.info("Calling AI STT server. recordingId={}", recording.getRecordingId());
+            log.debug("Calling AI STT server. recordingId={}", recording.getRecordingId());
 
             AiSttData data = response.data();
-            log.info("Received AI STT response. recordingId={}", recording.getRecordingId());
+            log.debug("Received AI STT response. recordingId={}", recording.getRecordingId());
 
             if (data == null) {
                 throw new IllegalStateException("AI response data is null");
             }
 
-            log.info("Saving transcription. recordingId={}", recording.getRecordingId());
+            log.debug("Saving transcription. recordingId={}", recording.getRecordingId());
             String transcript = data.transcript();
             if (transcript == null || transcript.isBlank()) {
                 throw new IllegalStateException("Transcript is empty");
