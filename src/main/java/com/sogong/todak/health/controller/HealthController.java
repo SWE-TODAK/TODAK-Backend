@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.sogong.todak.health.dto.response.MetricQueryResponse;
 
 import java.time.LocalDateTime;
 import java.util.Map;

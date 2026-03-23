@@ -3,6 +3,7 @@ package com.sogong.todak.health.service;
 import com.sogong.todak.health.dto.request.CreateMetricRequest;
 import com.sogong.todak.health.dto.request.RecordValueRequest;
 import com.sogong.todak.health.dto.response.HealthMetricResponse;
+import com.sogong.todak.health.dto.response.MetricQueryResponse;
 import com.sogong.todak.health.dto.response.MetricDetailResponse;
 import com.sogong.todak.health.dto.response.MetricDetailResponse.ValueLabelDto;
 import com.sogong.todak.health.entity.HealthMetric;
