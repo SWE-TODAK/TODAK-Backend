@@ -4,6 +4,8 @@ import com.sogong.todak.auth.refresh.service.RotateResult;
 import com.sogong.todak.auth.refresh.entity.RefreshToken;
 import com.sogong.todak.auth.refresh.policy.RefreshTokenPolicy;
 import com.sogong.todak.auth.refresh.repository.RefreshTokenRepository;
+import com.sogong.todak.common.exception.AuthenticationDataCleanupException;
+import com.sogong.todak.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,13 +21,14 @@ public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenPolicy refreshTokenPolicy;
+    private final UserRepository userRepository;
 
     /**
      * 로그인/회원가입 시 Refresh 발급
      * DB에는 hash만 저장하고 raw는 클라이언트에 반환
      */
     public String issue(UUID userId) {
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        validateActiveUser(userId);
 
         String rawToken = refreshTokenPolicy.generateRawToken();
         String tokenHash = refreshTokenPolicy.hash(rawToken);
@@ -63,6 +66,8 @@ public class RefreshTokenService {
             throw new IllegalArgumentException("REVOKED_REFRESH_TOKEN");
         }
 
+        validateActiveUser(stored.getUserId());
+
         // RTR: old revoke
         int updated = refreshTokenRepository.revokeByTokenHash(tokenHash, now);
         if (updated == 0) {
@@ -95,5 +100,19 @@ public class RefreshTokenService {
         String tokenHash = refreshTokenPolicy.hash(rawRefreshToken);
 
         refreshTokenRepository.revokeByTokenHash(tokenHash, now);
+    }
+
+    public void removeAllByUserId(UUID userId) {
+        try {
+            refreshTokenRepository.deleteByUserId(userId);
+        } catch (Exception ex) {
+            throw new AuthenticationDataCleanupException("인증 정보 정리 중 오류가 발생했습니다.", ex);
+        }
+    }
+
+    private void validateActiveUser(UUID userId) {
+        if (!userRepository.existsByUserIdAndDeletedAtIsNull(userId)) {
+            throw new IllegalArgumentException("탈퇴한 계정은 인증을 진행할 수 없습니다.");
+        }
     }
 }

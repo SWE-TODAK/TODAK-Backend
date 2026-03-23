@@ -41,13 +41,12 @@ public class LocalAuthService {
     public AuthResponse signup(SignupRequest req) {
         String email = normalizeEmail(req.getEmail());
         String nickname = normalizeNickname(req.getNickname());
-        String profileImageUrl = normalizeProfileImageUrl(req.getProfileImageUrl());
 
         // 1) 중복 체크 (UX용)
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmailAndDeletedAtIsNull(email)) {
             throw new DuplicateResourceException("이미 존재하는 이메일입니다.");
         }
-        if (userRepository.existsByNickname(nickname)) {
+        if (userRepository.existsByNicknameAndDeletedAtIsNull(nickname)) {
             throw new DuplicateResourceException("이미 존재하는 닉네임입니다.");
         }
 
@@ -57,7 +56,6 @@ public class LocalAuthService {
                 .nickname(nickname)
                 .birthDate(req.getBirthDate())
                 .gender(req.getGender())
-                .profileImageUrl(profileImageUrl)
                 .build();
 
         user = userRepository.save(user);
@@ -95,7 +93,7 @@ public class LocalAuthService {
         String email = normalizeEmail(req.getEmail());
 
         // 1) email로 UserAuth 조회 - user까지 로딩된 상태라고 가정
-        UserAuth userAuth = userAuthRepository.findByUser_Email(email)
+        UserAuth userAuth = userAuthRepository.findByUser_EmailAndUser_DeletedAtIsNull(email)
                 .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
 
         // 2) 비밀번호 검증
@@ -173,10 +171,4 @@ public class LocalAuthService {
         return nickname.trim();
     }
 
-    private String normalizeProfileImageUrl(String profileImageUrl) {
-        if (profileImageUrl == null) return null;
-
-        String normalized = profileImageUrl.trim();
-        return normalized.isEmpty() ? null : normalized;
-    }
 }

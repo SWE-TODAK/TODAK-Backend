@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.sogong.todak.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +26,7 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -64,6 +66,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void setAuthenticationToContext(String token) {
         UUID userId = jwtTokenProvider.getUserId(token);
         String role = jwtTokenProvider.getRole(token);
+
+        if (!userRepository.existsByUserIdAndDeletedAtIsNull(userId)) {
+            SecurityContextHolder.clearContext();
+            log.info("Skipped authentication for withdrawn user.");
+            return;
+        }
 
         // Principal에 UUID를 담되, 필요 시 UserDetails 객체를 생성하여 담을 수 있도록 확장 가능
         var authorities = List.of(new SimpleGrantedAuthority(role));
