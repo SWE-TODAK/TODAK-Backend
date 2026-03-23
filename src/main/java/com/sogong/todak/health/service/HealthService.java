@@ -81,6 +81,8 @@ public class HealthService {
     // 1. 나의 건강지표 목록 조회
     @Transactional(readOnly = true)
     public List<HealthMetricResponse> getMyMetrics(UUID userId) {
+        requireActiveUser(userId);
+
         List<HealthMetricResponse> responses = new ArrayList<>();
 
         for (DefaultMetricInfo info : DEFAULT_METRICS) {
@@ -113,6 +115,7 @@ public class HealthService {
     // 2. 건강 수치 추가
     @Transactional
     public UUID recordValue(UUID userId, RecordValueRequest request) {
+        requireActiveUser(userId);
         HealthMetric metric = resolveMetricForUser(userId, request.getMetricId());
 
         HealthMetricValue value = HealthMetricValue.builder()
@@ -136,6 +139,8 @@ public class HealthService {
     // 3. 건강 수치 추이 조회
     @Transactional(readOnly = true)
     public MetricQueryResponse getMetricHistory(UUID userId, String reqMetricId, int limit) {
+        requireActiveUser(userId);
+
         HealthMetric metric;
         String metricType;
 
@@ -190,7 +195,7 @@ public class HealthService {
     // 4. 나만의 건강지표 수동 생성
     @Transactional
     public UUID createCustomMetric(UUID userId, CreateMetricRequest request) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
 
         HealthMetric metric = HealthMetric.builder()
@@ -206,11 +211,16 @@ public class HealthService {
 
     // 5. 상세 정보 조회
     @Transactional(readOnly = true)
-    public MetricDetailResponse getMetricDetail(UUID valueId) {
+    public MetricDetailResponse getMetricDetail(UUID userId, UUID valueId) {
+        requireActiveUser(userId);
+
         HealthMetricValue v = valueRepository.findById(valueId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 기록을 찾을 수 없습니다."));
 
         HealthMetric m = v.getHealthMetric();
+        if (!m.getUser().getUserId().equals(userId)) {
+            throw new IllegalArgumentException("본인의 건강 기록만 조회할 수 있습니다.");
+        }
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd EEEE", Locale.KOREAN);
 
         List<ValueLabelDto> labels = new ArrayList<>();
@@ -241,6 +251,8 @@ public class HealthService {
     // 6. 건강 지표 삭제
     @Transactional
     public void deleteMetric(UUID userId, String reqMetricId) {
+        requireActiveUser(userId);
+
         if (reqMetricId.startsWith("m-")) {
             throw new IllegalArgumentException("기본 제공 지표 자체는 삭제할 수 없습니다. (개별 수치 삭제를 이용해 주세요)");
         }
@@ -259,6 +271,8 @@ public class HealthService {
     // 7. 건강 수치 삭제
     @Transactional
     public void deleteMetricValue(UUID userId, UUID valueId) {
+        requireActiveUser(userId);
+
         HealthMetricValue value = valueRepository.findById(valueId)
                 .orElseThrow(() -> new IllegalArgumentException("기록을 찾을 수 없습니다."));
 
@@ -277,7 +291,7 @@ public class HealthService {
                     .filter(m -> !m.isCustom() && m.getMetricType().equals(defaultInfo.metricType))
                     .findFirst()
                     .orElseGet(() -> {
-                        User user = userRepository.findById(userId)
+                        User user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
                                 .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
                         HealthMetric newMetric = HealthMetric.builder()
                                 .user(user)
@@ -296,6 +310,12 @@ public class HealthService {
                 throw new IllegalArgumentException("본인의 건강 지표에만 수치를 추가할 수 있습니다.");
             }
             return metric;
+        }
+    }
+
+    private void requireActiveUser(UUID userId) {
+        if (!userRepository.existsByUserIdAndDeletedAtIsNull(userId)) {
+            throw new IllegalArgumentException("유저를 찾을 수 없습니다.");
         }
     }
 }
