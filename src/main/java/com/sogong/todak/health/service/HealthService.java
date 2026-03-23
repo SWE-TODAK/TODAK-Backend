@@ -6,6 +6,7 @@ import com.sogong.todak.health.dto.response.HealthMetricResponse;
 import com.sogong.todak.health.dto.response.MetricQueryResponse;
 import com.sogong.todak.health.dto.response.MetricDetailResponse;
 import com.sogong.todak.health.dto.response.MetricDetailResponse.ValueLabelDto;
+import com.sogong.todak.health.dto.response.MetricQueryResponse;
 import com.sogong.todak.health.entity.HealthMetric;
 import com.sogong.todak.health.entity.HealthMetricValue;
 import com.sogong.todak.health.repository.HealthMetricRepository;

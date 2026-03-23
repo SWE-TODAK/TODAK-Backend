@@ -1,10 +1,14 @@
 package com.sogong.todak.auth.oauth2.userinfo;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 public class KakaoUserInfo extends OAuth2UserInfo {
 
     private final Map<String, Object> kakaoAccount;
@@ -44,27 +48,44 @@ public class KakaoUserInfo extends OAuth2UserInfo {
                 .orElse(null);
     }
 
-    // --- 추가된 생년월일 처리 로직 ---
-
-    /**
-     * 카카오의 birthyear(YYYY)와 birthday(MMDD)를 합쳐 LocalDate로 반환합니다.
-     * DB의 birth_date (date) 컬럼과 매핑됩니다.
-     */
     public LocalDate getBirthDate() {
-        if (kakaoAccount == null) return null;
+        return parseBirthDate(getBirthYear(), getBirthday());
+    }
 
-        String birthYear = (String) kakaoAccount.get("birthyear"); // 예: "1995"
-        String birthDay = (String) kakaoAccount.get("birthday");   // 예: "0521"
+    public String getBirthYear() {
+        return getAttributeString(kakaoAccount, "birthyear");
+    }
 
-        if (birthYear == null || birthDay == null) {
+    public String getBirthday() {
+        return getAttributeString(kakaoAccount, "birthday");
+    }
+
+    public OAuthUserProfile toUserProfile() {
+        return OAuthUserProfile.builder()
+                .email(getEmail())
+                .nickname(getNickname())
+                .profileImageUrl(getProfileImageUrl())
+                .birthDate(getBirthDate())
+                .build();
+    }
+
+    public static LocalDate parseBirthDate(String birthYear, String birthday) {
+        if (birthYear == null || birthday == null) {
+            return null;
+        }
+
+        String normalizedBirthYear = birthYear.trim();
+        String normalizedBirthday = birthday.trim();
+
+        if (!normalizedBirthYear.matches("\\d{4}") || !normalizedBirthday.matches("\\d{4}")) {
+            log.warn("Kakao birthDate format is invalid. birthyear={}, birthday={}", birthYear, birthday);
             return null;
         }
 
         try {
-            // "1995" + "0521" = "19950521" -> LocalDate 변환
-            return LocalDate.parse(birthYear + birthDay, DateTimeFormatter.ofPattern("yyyyMMdd"));
-        } catch (Exception e) {
-            // 날짜 파싱 실패 시 로그를 남기거나 null 반환
+            return LocalDate.parse(normalizedBirthYear + normalizedBirthday, DateTimeFormatter.BASIC_ISO_DATE);
+        } catch (DateTimeParseException e) {
+            log.warn("Failed to parse Kakao birthDate. birthyear={}, birthday={}", birthYear, birthday);
             return null;
         }
     }

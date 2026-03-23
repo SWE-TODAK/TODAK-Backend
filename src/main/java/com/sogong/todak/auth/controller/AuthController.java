@@ -72,13 +72,6 @@ public class AuthController {
         ));
     }
 
-    @DeleteMapping("/kakao/unlink")
-    public ResponseEntity<?> kakaoUnlink() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(Map.of(
-                "message", "NOT_IMPLEMENTED: kakao unlink flow is not wired yet."
-        ));
-    }
-
     // =========================
     // Local
     // =========================

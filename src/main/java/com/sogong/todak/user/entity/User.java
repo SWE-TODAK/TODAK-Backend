@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.sogong.todak.auth.oauth2.userinfo.OAuthUserProfile;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -68,10 +70,31 @@ public class User {
     }
 
     public void syncOAuth2Profile(String email, String nickname, String profileImageUrl, LocalDate birthDate) { // 파라미터 4개 확인
-        if (email != null) this.email = email;
-        this.nickname = nickname;
-        this.profileImageUrl = profileImageUrl;
-        this.birthDate = birthDate;
+        applyOAuth2Profile(OAuthUserProfile.builder()
+                .email(email)
+                .nickname(nickname)
+                .profileImageUrl(profileImageUrl)
+                .birthDate(birthDate)
+                .build());
+    }
+
+    public void applyOAuth2Profile(OAuthUserProfile profile) {
+        if (profile == null) {
+            return;
+        }
+
+        if (profile.getEmail() != null) {
+            this.email = profile.getEmail();
+        }
+        if (profile.getNickname() != null) {
+            this.nickname = profile.getNickname();
+        }
+        if (profile.getProfileImageUrl() != null) {
+            this.profileImageUrl = profile.getProfileImageUrl();
+        }
+        if (this.birthDate == null && profile.getBirthDate() != null) {
+            this.birthDate = profile.getBirthDate();
+        }
     }
 
     public void updateProfileImageUrl(String profileImageUrl) {
