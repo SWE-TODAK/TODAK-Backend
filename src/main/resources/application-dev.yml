@@ -21,7 +21,7 @@ spring:
   datasource:
     url: ${TODAK_DB_URL:jdbc:postgresql://127.0.0.1:5432/todak_dev}
     username: ${TODAK_DB_USER:todak_app}
-    password: ${TODAK_DB_PASS:}
+    password: ${TODAK_DB_PASS:TodakApp!2026}
     driver-class-name: org.postgresql.Driver
 
   security:
@@ -59,8 +59,13 @@ springdoc:
     path: /swagger-ui.html
 
 aws:
-  region: ap-northeast-2
   s3:
+    region: ap-northeast-2
     bucket: todak-recordings
     prefix: recordings
     presign-exp-min: 10
+
+ai:
+  base-url: http://127.0.0.1:8000
+  internal-key: ${AI_INTERNAL_KEY}
+

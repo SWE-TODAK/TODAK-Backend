@@ -61,6 +61,7 @@ public class Job {
 
     public void markRunning() {
         this.status = JobStatus.RUNNING;
+        this.attemptCount = this.attemptCount + 1;
         this.updatedAt = OffsetDateTime.now();
     }
 
