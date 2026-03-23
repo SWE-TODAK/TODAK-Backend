@@ -101,12 +101,12 @@ class AuthControllerValidationTest {
     }
 
     @Test
-    @DisplayName("회원가입 중 DB unique 제약 위반이 발생해도 409를 반환한다")
+    @DisplayName("회원가입 중 이메일 unique 제약 위반이 발생해도 409를 반환한다")
     void localSignupDataIntegrityViolationReturnsConflict() throws Exception {
         when(localAuthService.signup(any()))
                 .thenThrow(new DataIntegrityViolationException(
                         "could not execute statement",
-                        new RuntimeException("duplicate key value violates unique constraint \"ux_users_nickname\"")
+                        new RuntimeException("duplicate key value violates unique constraint \"ux_users_email\"")
                 ));
 
         Map<String, Object> request = Map.of(
@@ -119,7 +119,7 @@ class AuthControllerValidationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("이미 존재하는 닉네임입니다."))
+                .andExpect(jsonPath("$.message").value("이미 존재하는 이메일입니다."))
                 .andExpect(jsonPath("$.path").value("/api/v1/auth/local/signup"));
     }
 

@@ -81,13 +81,6 @@ public class UserServiceImpl implements UserService {
         User user = getCurrentUserForUpdate();
 
         String nickname = normalizeNickname(request.getNickname());
-        String currentNickname = normalizeNickname(user.getNickname());
-
-        if (!Objects.equals(nickname, currentNickname)
-                && userRepository.existsByNicknameAndDeletedAtIsNull(nickname)) {
-            throw new DuplicateResourceException("이미 존재하는 닉네임입니다.");
-        }
-
         user.updateNickname(nickname);
     }
 

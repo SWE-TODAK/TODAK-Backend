@@ -130,9 +130,6 @@ public class GlobalExceptionHandler {
         if (lowerMessage.contains("ux_users_email") || lowerMessage.contains("(email)")) {
             return "이미 존재하는 이메일입니다.";
         }
-        if (lowerMessage.contains("ux_users_nickname") || lowerMessage.contains("(nickname)")) {
-            return "이미 존재하는 닉네임입니다.";
-        }
         if (lowerMessage.contains("not-null") && lowerMessage.contains("nickname")) {
             return "닉네임은 필수입니다.";
         }
@@ -153,6 +150,6 @@ public class GlobalExceptionHandler {
         return lowerMessage.contains("duplicate")
                 || lowerMessage.contains("unique")
                 || lowerMessage.contains("ux_users_email")
-                || lowerMessage.contains("ux_users_nickname");
+                || lowerMessage.contains("(email)");
     }
 }

@@ -80,12 +80,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
      * UserAuth(자체 비밀번호) 없이 User와 UserIdentity만 생성함
      */
     private User registerNewSocialUser(AuthProvider provider, KakaoUserInfo userInfo) {
-        String uniqueNickname = ensureUniqueNickname(userInfo.getNickname());
+        String nickname = normalizeNickname(userInfo.getNickname());
 
         // 프로필 생성
         User newUser = User.builder()
                 .email(userInfo.getEmail())
-                .nickname(uniqueNickname)
+                .nickname(nickname)
                 .profileImageUrl(userInfo.getProfileImageUrl())
                 .birthDate(userInfo.getBirthDate())
                 .build();
@@ -107,10 +107,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     private String ensureUniqueNickname(String nickname) {
-        String base = (nickname == null || nickname.isBlank()) ? "토닥이" : nickname;
-        if (!userRepository.existsByNicknameAndDeletedAtIsNull(base)) return base;
+        return normalizeNickname(nickname);
+    }
 
-        return base + "_" + UUID.randomUUID().toString().substring(0, 5);
+    private String normalizeNickname(String nickname) {
+        return (nickname == null || nickname.isBlank()) ? "토닥이" : nickname;
     }
 
     private Map<String, Object> makeAttributes(Map<String, Object> original, User user, String pId) {
