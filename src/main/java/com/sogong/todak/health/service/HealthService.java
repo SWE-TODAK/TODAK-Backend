@@ -5,7 +5,6 @@ import com.sogong.todak.health.dto.request.RecordValueRequest;
 import com.sogong.todak.health.dto.response.HealthMetricResponse;
 import com.sogong.todak.health.dto.response.MetricDetailResponse;
 import com.sogong.todak.health.dto.response.MetricDetailResponse.ValueLabelDto;
-import com.sogong.todak.health.dto.response.MetricQueryResponse;
 import com.sogong.todak.health.entity.HealthMetric;
 import com.sogong.todak.health.entity.HealthMetricValue;
 import com.sogong.todak.health.repository.HealthMetricRepository;
@@ -156,6 +155,7 @@ public class HealthService {
             if (metric == null) {
                 return MetricQueryResponse.builder()
                         .metricType(metricType)
+                        .summaryMessage("아직 측정 기록이 없네요. 오늘의 건강 수치를 새로 기록해 보세요! 📝")
                         .history(new ArrayList<>())
                         .build();
             }
@@ -185,9 +185,11 @@ public class HealthService {
                         .status("NORMAL")
                         .build()
         ).collect(Collectors.toList());
+        String summaryMessage = generateSummaryMessage(metric.getMetricType(), values);
 
         return MetricQueryResponse.builder()
                 .metricType(metricType)
+                .summaryMessage(summaryMessage)
                 .history(history)
                 .build();
     }
@@ -316,6 +318,68 @@ public class HealthService {
     private void requireActiveUser(UUID userId) {
         if (!userRepository.existsByUserIdAndDeletedAtIsNull(userId)) {
             throw new IllegalArgumentException("유저를 찾을 수 없습니다.");
+        }
+    }
+
+    // 🔥 평균 계산 및 다정한 멘트 생성 메서드 (맨 아래쪽에 추가)
+    private String generateSummaryMessage(String metricType, List<HealthMetricValue> values) {
+        if (values == null || values.isEmpty()) {
+            return "아직 측정 기록이 없네요. 오늘의 건강 수치를 새로 기록해 보세요! 📝";
+        }
+
+        int count = values.size();
+
+        switch (metricType) {
+            case TYPE_BLOOD_PRESSURE:
+                double avgSys = values.stream().filter(v -> v.getSystolic() != null).mapToInt(HealthMetricValue::getSystolic).average().orElse(0);
+                double avgDia = values.stream().filter(v -> v.getDiastolic() != null).mapToInt(HealthMetricValue::getDiastolic).average().orElse(0);
+
+                if (avgSys == 0 && avgDia == 0) return "혈압 기록이 충분하지 않습니다.";
+
+                String bpStatus;
+                String bpAdvice;
+
+                if (avgSys < 120 && avgDia < 80) {
+                    bpStatus = "모두 정상 범위입니다";
+                    bpAdvice = "안정적인 상태에요. 지금처럼 규칙적인 식습관과 가벼운 운동을 유지하세요 💚";
+                } else if (avgSys < 140 && avgDia < 90) {
+                    bpStatus = "주의가 필요한 범위입니다";
+                    bpAdvice = "혈압이 다소 높은 편이에요. 짠 음식을 줄이고 가벼운 유산소 운동을 추천해요 🏃‍♀️";
+                } else {
+                    bpStatus = "관리가 필요한 범위입니다";
+                    bpAdvice = "혈압이 높은 편이에요. 전문의와 상담하고 꾸준히 건강을 체크해 주세요 ⚠️";
+                }
+                return String.format("최근 %d회 측정 %s. 수축기 평균 %.0fmmHg, 이완기 평균 %.0fmmHg로 %s",
+                        count, bpStatus, avgSys, avgDia, bpAdvice);
+
+            case TYPE_BLOOD_SUGAR:
+                double avgBefore = values.stream().filter(v -> v.getBeforeMeal() != null).mapToInt(HealthMetricValue::getBeforeMeal).average().orElse(0);
+                double avgAfter = values.stream().filter(v -> v.getAfterMeal() != null).mapToInt(HealthMetricValue::getAfterMeal).average().orElse(0);
+                return String.format("최근 %d회 측정 기준, 공복 평균 %.0fmg/dL, 식후 평균 %.0fmg/dL 입니다. 당 섭취를 조절하며 꾸준히 관리해 보아요 🥗", count, avgBefore, avgAfter);
+
+            case TYPE_CHOLESTEROL:
+                double avgChol = values.stream().filter(v -> v.getTotalChol() != null).mapToDouble(HealthMetricValue::getTotalChol).average().orElse(0);
+                return String.format("최근 %d회 평균 총콜레스테롤은 %.1fmg/dL 입니다. 기름진 음식은 피하고 규칙적인 운동을 잊지 마세요! 🚴‍♂️", count, avgChol);
+
+            case TYPE_WEIGHT:
+                double avgWeight = values.stream().filter(v -> v.getValue() != null).mapToDouble(HealthMetricValue::getValue).average().orElse(0);
+                return String.format("최근 %d회 평균 체중은 %.1fkg 입니다. 무리하지 말고 건강한 페이스로 목표를 향해 나아가요! 💪", count, avgWeight);
+
+            case TYPE_HEART:
+                double avgHeart = values.stream().filter(v -> v.getValue() != null).mapToDouble(HealthMetricValue::getValue).average().orElse(0);
+                return String.format("최근 %d회 평균 심박수는 %.0fbpm 입니다. 무리한 활동보다는 마음의 안정을 취하며 스트레스를 관리해 보세요 🧘‍♀️", count, avgHeart);
+
+            case TYPE_LIVER:
+                double avgLiver = values.stream().filter(v -> v.getValue() != null).mapToDouble(HealthMetricValue::getValue).average().orElse(0);
+                return String.format("최근 %d회 평균 간 수치는 %.1fIU/L 입니다. 오늘은 간도 쉴 수 있게 충분한 휴식과 금주를 권장해요 🛌", count, avgLiver);
+
+            case TYPE_KIDNEY:
+                double avgKidney = values.stream().filter(v -> v.getValue() != null).mapToDouble(HealthMetricValue::getValue).average().orElse(0);
+                return String.format("최근 %d회 평균 신장 수치는 %.1fmg/dL 입니다. 노폐물 배출을 위해 수분을 충분히 섭취해 주세요 💧", count, avgKidney);
+
+            default:
+                double avgDefault = values.stream().filter(v -> v.getValue() != null).mapToDouble(HealthMetricValue::getValue).average().orElse(0);
+                return String.format("최근 %d회 측정 평균값은 %.1f 입니다. 꾸준한 기록이 건강의 첫걸음입니다! ✨", count, avgDefault);
         }
     }
 }

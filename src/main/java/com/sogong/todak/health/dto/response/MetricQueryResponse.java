@@ -8,7 +8,8 @@ import java.util.UUID;
 @Getter
 @Builder
 public class MetricQueryResponse {
-    private String metricType; // 예: BLOOD_PRESSURE
+    private String metricType;
+    private String summaryMessage;
     private List<HistoryDto> history;
 
     @Getter
@@ -19,6 +20,12 @@ public class MetricQueryResponse {
         private String date;
         private Integer systolic;
         private Integer diastolic;
+        private Integer beforeMeal;
+        private Integer afterMeal;
+        private Double totalChol;
+        private Double hdl;
+        private Double ldl;
+        private Double triglyceride;
         private Double value;
         private String status;
     }
