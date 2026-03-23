@@ -36,6 +36,52 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundException(
+            UserNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AlreadyWithdrawnUserException.class)
+    public ResponseEntity<ErrorResponse> handleAlreadyWithdrawnUserException(
+            AlreadyWithdrawnUserException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler({
+            InvalidPasswordException.class,
+            UnsupportedAuthProviderException.class
+    })
+    public ResponseEntity<ErrorResponse> handleBadRequestBusinessException(
+            RuntimeException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler({
+            KakaoUnlinkFailedException.class,
+            ExternalApiException.class
+    })
+    public ResponseEntity<ErrorResponse> handleExternalApiException(
+            RuntimeException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AuthenticationDataCleanupException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationDataCleanupException(
+            AuthenticationDataCleanupException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
             IllegalArgumentException ex,

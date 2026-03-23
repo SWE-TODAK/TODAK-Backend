@@ -14,3 +14,7 @@ spring:
 jwt:
   secret: "test-secret-key-must-be-at-least-32-bytes-long-abcd" # 테스트용 고정 키
   access-exp-min: 30
+
+app:
+  kakao:
+    admin-key: test-kakao-admin-key

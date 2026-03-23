@@ -1,5 +1,7 @@
 app:
   server-url: http://localhost:8080
+  kakao:
+    admin-key: ${KAKAO_ADMIN_KEY:}
   oauth2:
     web-callback-uri: http://localhost:3000/auth/callback
     mobile-callback-uri: todak://auth/callback

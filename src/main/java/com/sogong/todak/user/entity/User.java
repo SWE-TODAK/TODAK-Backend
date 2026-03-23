@@ -39,6 +39,9 @@ public class User {
     @Column(name = "profile_image_url", columnDefinition = "text")
     private String profileImageUrl;
 
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
     // 자체 로그인 정보 (1:1)
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private UserAuth auth;
@@ -75,6 +78,10 @@ public class User {
         this.profileImageUrl = profileImageUrl;
     }
 
+    public void removeProfileImageUrl() {
+        this.profileImageUrl = null;
+    }
+
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
@@ -89,5 +96,13 @@ public class User {
 
     public void updateGender(Gender gender) {
         this.gender = gender;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public void softDelete() {
+        this.deletedAt = OffsetDateTime.now();
     }
 }
