@@ -42,7 +42,7 @@ public class OAuthExchangeService {
         UUID userId = payload.userId();
         boolean isNewUser = payload.isNewUser();
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new AuthExchangeException(AuthExchangeError.USER_NOT_FOUND));
 
         List<String> providers = userIdentityRepository.findAllByUser(user)

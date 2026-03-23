@@ -142,7 +142,7 @@ public class HealthService {
     // 3. 나만의 건강지표 수동 생성
     @Transactional
     public UUID createCustomMetric(UUID userId, CreateMetricRequest request) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
 
         HealthMetric metric = HealthMetric.builder()

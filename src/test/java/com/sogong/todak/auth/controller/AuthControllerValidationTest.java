@@ -7,6 +7,7 @@ import com.sogong.todak.auth.jwt.JwtTokenProvider;
 import com.sogong.todak.auth.oauth2.service.LocalAuthService;
 import com.sogong.todak.auth.oauth2.service.OAuthExchangeService;
 import com.sogong.todak.auth.refresh.service.RefreshTokenService;
+import com.sogong.todak.auth.service.AuthWithdrawalService;
 import com.sogong.todak.common.exception.DuplicateResourceException;
 import com.sogong.todak.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +24,9 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,18 +35,21 @@ class AuthControllerValidationTest {
 
     private MockMvc mockMvc;
     private LocalAuthService localAuthService;
+    private AuthWithdrawalService authWithdrawalService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
         localAuthService = mock(LocalAuthService.class);
         OAuthExchangeService oAuthExchangeService = mock(OAuthExchangeService.class);
+        authWithdrawalService = mock(AuthWithdrawalService.class);
         RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
 
         AuthController controller = new AuthController(
                 localAuthService,
                 oAuthExchangeService,
+                authWithdrawalService,
                 refreshTokenService,
                 jwtTokenProvider
         );
@@ -141,5 +147,18 @@ class AuthControllerValidationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴 요청은 204를 반환한다")
+    void withdrawCurrentUserReturnsNoContent() throws Exception {
+        Map<String, Object> request = Map.of("password", "password1234");
+
+        mockMvc.perform(delete("/api/v1/auth/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        verify(authWithdrawalService).withdrawCurrentUser(any());
     }
 }

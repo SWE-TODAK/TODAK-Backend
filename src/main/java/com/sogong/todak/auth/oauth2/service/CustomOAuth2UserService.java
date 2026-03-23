@@ -47,7 +47,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         // 3. 기존 연동 여부 확인 (UserIdentity 기반 조회)
         User user = userIdentityRepository.findByProviderAndProviderUserId(provider, providerUserId)
-                .map(UserIdentity::getUser)
+                .map(identity -> {
+                    User existingUser = identity.getUser();
+                    if (existingUser.isDeleted()) {
+                        throw new OAuth2AuthenticationException(
+                                new OAuth2Error("withdrawn_user"),
+                                "이미 탈퇴한 계정입니다."
+                        );
+                    }
+                    return existingUser;
+                })
                 .orElseGet(() -> registerNewSocialUser(provider, kakaoUserInfo));
 
         // 4. 최신 프로필 정보 동기화
@@ -99,7 +108,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private String ensureUniqueNickname(String nickname) {
         String base = (nickname == null || nickname.isBlank()) ? "토닥이" : nickname;
-        if (!userRepository.existsByNickname(base)) return base;
+        if (!userRepository.existsByNicknameAndDeletedAtIsNull(base)) return base;
 
         return base + "_" + UUID.randomUUID().toString().substring(0, 5);
     }
