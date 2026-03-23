@@ -51,8 +51,10 @@ public class HealthController {
 
     // 4. 건강 수치 구체적 조회 (GET)
     @GetMapping("/metrics/values/{metricValueId}")
-    public ResponseEntity<?> getMetricValueDetail(@PathVariable UUID metricValueId) {
-        var data = healthService.getMetricDetail(metricValueId);
+    public ResponseEntity<?> getMetricValueDetail(
+            @AuthenticationPrincipal UUID userId,
+            @PathVariable UUID metricValueId) {
+        var data = healthService.getMetricDetail(userId, metricValueId);
         return ResponseEntity.ok(Map.of("status", 200, "data", data));
     }
 
@@ -63,7 +65,7 @@ public class HealthController {
             @RequestBody RecordValueRequest request) {
 
         UUID metricValueId = healthService.recordValue(userId, request);
-        String actualMetricType = healthService.getMetricDetail(metricValueId).getMetricType();
+        String actualMetricType = healthService.getMetricDetail(userId, metricValueId).getMetricType();
 
         return ResponseEntity.ok(Map.of(
                 "status", 200,
