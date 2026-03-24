@@ -43,6 +43,11 @@ public class SttJobWorker {
                 JobType.STT,
                 JobStatus.QUEUED
         );
+        // 1. 작업이 없으면 즉시 리턴 (로그 한 줄도 안 남음)
+        if (jobs.isEmpty()) return;
+
+        // 2. 작업이 있을 때만 딱 한 줄 기록
+        log.info("Starting STT Batch: {} jobs found.", jobs.size());
 
         for (Job job : jobs) {
             try {
@@ -57,7 +62,7 @@ public class SttJobWorker {
     public void processSingleJob(UUID jobId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
-        log.info("Picked STT job. jobId={}, recordingId={}", job.getJobId(), job.getRecordingId());
+        //log.info("Picked STT job. jobId={}, recordingId={}", job.getJobId(), job.getRecordingId());
 
         if (job.getJobType() != JobType.STT || job.getStatus() != JobStatus.QUEUED) {
             return;
@@ -70,7 +75,7 @@ public class SttJobWorker {
             job.markRunning();
 
             String downloadUrl = s3PresignService.presignGetUrl(recording.getStorageKey());
-            log.debug("Generated download URL for recordingId={}", recording.getRecordingId());
+            //log.debug("Generated download URL for recordingId={}", recording.getRecordingId());
 
             SttByUrlRequest request = new SttByUrlRequest(
                     recording.getRecordingId(),
@@ -85,16 +90,16 @@ public class SttJobWorker {
             );
 
             AiSttResponse response = aiClient.requestTranscriptionByUrl(request);
-            log.debug("Calling AI STT server. recordingId={}", recording.getRecordingId());
+            //log.debug("Calling AI STT server. recordingId={}", recording.getRecordingId());
 
             AiSttData data = response.data();
-            log.debug("Received AI STT response. recordingId={}", recording.getRecordingId());
+            //log.debug("Received AI STT response. recordingId={}", recording.getRecordingId());
 
             if (data == null) {
                 throw new IllegalStateException("AI response data is null");
             }
 
-            log.debug("Saving transcription. recordingId={}", recording.getRecordingId());
+            //log.debug("Saving transcription. recordingId={}", recording.getRecordingId());
             String transcript = data.transcript();
             if (transcript == null || transcript.isBlank()) {
                 throw new IllegalStateException("Transcript is empty");
@@ -110,7 +115,7 @@ public class SttJobWorker {
             var existing = transcriptionRepository.findByRecordingId(recording.getRecordingId());
 
             if (existing.isPresent()) {
-                log.warn("Transcription already exists. recordingId={}", recording.getRecordingId());
+                //log.warn("Transcription already exists. recordingId={}", recording.getRecordingId());
             } else {
                 transcriptionRepository.save(
                         Transcription.create(
