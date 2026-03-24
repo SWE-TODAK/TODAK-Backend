@@ -43,6 +43,11 @@ public class SttJobWorker {
                 JobType.STT,
                 JobStatus.QUEUED
         );
+        // 1. 작업이 없으면 즉시 리턴 (로그 한 줄도 안 남음)
+        if (jobs.isEmpty()) return;
+
+        // 2. 작업이 있을 때만 딱 한 줄 기록
+        log.info("Starting STT Batch: {} jobs found.", jobs.size());
 
         for (Job job : jobs) {
             try {
