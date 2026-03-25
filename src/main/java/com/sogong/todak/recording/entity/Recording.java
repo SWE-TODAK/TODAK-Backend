@@ -50,6 +50,21 @@ public class Recording {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "hospital_name", length = 255)
+    private String hospitalName;
+
+    @Column(name = "disease_name", length = 255)
+    private String diseaseName;
+
+    @Column(name = "doctor_name", length = 100)
+    private String doctorName;
+
+    @Column(name = "department_name", length = 100)
+    private String departmentName;
+
+    @Column(name = "consulted_at")
+    private OffsetDateTime consultedAt;
+
     public static Recording create(UUID userId) {
         var now = OffsetDateTime.now();
         return Recording.builder()
@@ -59,6 +74,23 @@ public class Recording {
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
+    }
+
+    public void updateMedicalMetadata(
+            String hospitalName,
+            String diseaseName,
+            String doctorName,
+            String departmentName,
+            OffsetDateTime consultedAt,
+            String title
+    ) {
+        this.hospitalName = hospitalName;
+        this.diseaseName = diseaseName;
+        this.doctorName = doctorName;
+        this.departmentName = departmentName;
+        this.consultedAt = consultedAt;
+        this.title = title;
+        this.updatedAt = OffsetDateTime.now();
     }
 
     public void markUploaded(String storageKey, String mimeType, Integer durationMs, Integer sampleRate) {

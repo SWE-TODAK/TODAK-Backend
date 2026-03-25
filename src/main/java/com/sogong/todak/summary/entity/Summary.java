@@ -25,7 +25,7 @@ public class Summary {
     @Column(name = "summary_id", nullable = false)
     private UUID summaryId;
 
-    @Column(name = "recording_id", nullable = false)
+    @Column(name = "recording_id", nullable = false, unique = true)
     private UUID recordingId;
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
