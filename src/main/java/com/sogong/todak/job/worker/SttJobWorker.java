@@ -47,13 +47,13 @@ public class SttJobWorker {
         if (jobs.isEmpty()) return;
 
         // 2. 작업이 있을 때만 딱 한 줄 기록
-        log.info("Starting STT Batch: {} jobs found.", jobs.size());
+        //log.info("Starting STT Batch: {} jobs found.", jobs.size());
 
         for (Job job : jobs) {
             try {
                 processSingleJob(job.getJobId());
             } catch (Exception e) {
-                log.error("Failed to process STT job. jobId={}", job.getJobId(), e);
+                //log.error("Failed to process STT job. jobId={}", job.getJobId(), e);
             }
         }
     }
