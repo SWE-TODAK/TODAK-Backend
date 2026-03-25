@@ -3,6 +3,7 @@ package com.sogong.todak.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
@@ -13,6 +14,7 @@ public class AwsS3Config {
     public S3Presigner s3Presigner(@Value("${aws.s3.region}") String region) {
         return S3Presigner.builder()
                 .region(Region.of(region))
+                .credentialsProvider(ProfileCredentialsProvider.create("default")) // 명시적으로 default 프로필 지정
                 .build();
     }
 }
