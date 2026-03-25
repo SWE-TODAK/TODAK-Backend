@@ -7,9 +7,11 @@ import com.sogong.todak.auth.dto.request.RefreshRequest;
 import com.sogong.todak.auth.dto.request.SignupRequest;
 import com.sogong.todak.auth.dto.request.WithdrawRequest;
 import com.sogong.todak.auth.dto.response.AuthResponse;
+import com.sogong.todak.auth.dto.response.EmailAccountStatusResponse;
 import com.sogong.todak.auth.dto.response.TokenPairResponse;
 import com.sogong.todak.auth.jwt.JwtTokenProvider;
 import com.sogong.todak.auth.service.AuthWithdrawalService;
+import com.sogong.todak.auth.service.EmailAccountStatusService;
 import com.sogong.todak.auth.oauth2.service.LocalAuthService;
 import com.sogong.todak.auth.oauth2.service.OAuthExchangeService;
 import com.sogong.todak.auth.refresh.service.RefreshTokenService;
@@ -37,6 +39,7 @@ public class AuthController {
     private final LocalAuthService localAuthService;
     private final OAuthExchangeService oAuthExchangeService;
     private final AuthWithdrawalService authWithdrawalService;
+    private final EmailAccountStatusService emailAccountStatusService;
 
     private final RefreshTokenService refreshTokenService;
     private final JwtTokenProvider jwtTokenProvider;
@@ -84,7 +87,8 @@ public class AuthController {
     @PostMapping("/local/signup")
     public ResponseEntity<AuthResponse> localSignup(@Valid @RequestBody SignupRequest request) {
         AuthResponse response = localAuthService.signup(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        HttpStatus status = response.isNewUser() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(response);
     }
 
     // =========================
@@ -92,7 +96,7 @@ public class AuthController {
     // =========================
 
     /**
-     * ✅ 토큰 재발급
+     * 토큰 재발급
      * POST /api/v1/auth/token/refresh
      * body: { "refreshToken": "raw..." }
      */
@@ -151,10 +155,8 @@ public class AuthController {
     }
 
     @GetMapping("/providers")
-    public ResponseEntity<?> providers() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(Map.of(
-                "message", "NOT_IMPLEMENTED: providers query is not wired yet."
-        ));
+    public ResponseEntity<EmailAccountStatusResponse> providers(@RequestParam("email") String email) {
+        return ResponseEntity.ok(emailAccountStatusService.getStatus(email));
     }
 
     @PutMapping("/password")
