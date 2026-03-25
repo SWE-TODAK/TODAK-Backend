@@ -11,12 +11,15 @@ import com.sogong.todak.job.entity.Job;
 import com.sogong.todak.job.entity.JobType;
 import com.sogong.todak.job.repository.JobRepository;
 import com.sogong.todak.recording.entity.RecordingStatus;
+import com.sogong.todak.recording.dto.request.UpdateRecordingMetadataRequest;
+import com.sogong.todak.recording.dto.response.RecordingDetailResponse;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -29,6 +32,14 @@ public class RecordingService {
 
     @Value("${aws.s3.prefix:recordings}")
     private String prefix;
+    private String resolveTitle(String title, OffsetDateTime consultedAt) {
+        if (title != null && !title.isBlank()) {
+            return title.trim();
+        }
+
+        OffsetDateTime base = (consultedAt != null) ? consultedAt : OffsetDateTime.now();
+        return base.toLocalDate() + " 진료";
+    }
 
     @Transactional
     public CreateRecordingUploadResponse createUpload(UUID userId, CreateRecordingUploadRequest req) {
@@ -49,6 +60,29 @@ public class RecordingService {
                 .method("PUT")
                 .mimeType(req.getMimeType())
                 .build();
+    }
+
+    @Transactional
+    public RecordingDetailResponse updateMetadata(UUID userId, UUID recordingId, UpdateRecordingMetadataRequest req) {
+        Recording recording = recordingRepository.findByRecordingIdAndUserId(recordingId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Recording not found"));
+
+        OffsetDateTime finalConsultedAt = (req.getConsultedAt() != null)
+                ? req.getConsultedAt()
+                : OffsetDateTime.now();
+
+        String finalTitle = resolveTitle(req.getTitle(), finalConsultedAt);
+
+        recording.updateMedicalMetadata(
+                req.getHospitalName(),
+                req.getDiseaseName(),
+                req.getDoctorName(),
+                req.getDepartmentName(),
+                finalConsultedAt,
+                finalTitle
+        );
+
+        return RecordingDetailResponse.from(recording);
     }
 
     @Transactional

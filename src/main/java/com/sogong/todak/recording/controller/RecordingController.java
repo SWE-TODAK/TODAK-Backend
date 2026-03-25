@@ -5,6 +5,8 @@ import com.sogong.todak.recording.dto.request.MarkUploadedRequest;
 import com.sogong.todak.recording.dto.response.CreateRecordingUploadResponse;
 import com.sogong.todak.recording.service.RecordingService;
 import com.sogong.todak.job.dto.response.JobResponse;
+import com.sogong.todak.recording.dto.request.UpdateRecordingMetadataRequest;
+import com.sogong.todak.recording.dto.response.RecordingDetailResponse;
 import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,15 @@ public class RecordingController {
         UUID userId = getCurrentUserId();
         recordingService.markUploaded(userId, recordingId, req);
         return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{recordingId}/metadata")
+    public ResponseEntity<RecordingDetailResponse> updateMetadata(
+            @PathVariable UUID recordingId,
+            @Valid @RequestBody UpdateRecordingMetadataRequest req
+    ) {
+        UUID userId = getCurrentUserId();
+        return ResponseEntity.ok(recordingService.updateMetadata(userId, recordingId, req));
     }
 
     @PostMapping("/{recordingId}/stt")
