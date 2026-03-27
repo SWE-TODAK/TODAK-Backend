@@ -133,12 +133,12 @@ public class SttJobWorker {
 
             job.markSucceeded();
             recording.markDone();
-            log.info("STT job succeeded. jobId={}, recordingId={}", job.getJobId(), recording.getRecordingId());
+            //log.info("STT job succeeded. jobId={}, recordingId={}", job.getJobId(), recording.getRecordingId());
 
         } catch (Exception e) {
             job.markFailed(truncate(e.getMessage()));
             recording.markFailed();
-            log.error("STT job failed. jobId={}, recordingId={}", job.getJobId(), recording.getRecordingId(), e);
+            //log.error("STT job failed. jobId={}, recordingId={}", job.getJobId(), recording.getRecordingId(), e);
         }
     }
 
