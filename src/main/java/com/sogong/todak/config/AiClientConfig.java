@@ -1,4 +1,4 @@
-package com.sogong.todak.ai.config;
+package com.sogong.todak.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -37,7 +37,7 @@ public class SttJobWorker {
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
 
-    @Scheduled(fixedDelay = 5000)
+    //@Scheduled(fixedDelay = 5000)
     public void processQueuedSttJobs() {
         List<Job> jobs = jobRepository.findTop10ByJobTypeAndStatusOrderByCreatedAtAsc(
                 JobType.STT,
@@ -79,14 +79,13 @@ public class SttJobWorker {
 
             SttByUrlRequest request = new SttByUrlRequest(
                     recording.getRecordingId(),
-                    null,
-                    "ko",
-                    downloadUrl,
-                    false,
-                    25,
-                    2,
-                    250,
-                    1.0
+                    "ko",            // language
+                    downloadUrl,     // audioUrl
+                    false,           // vadEnabled
+                    25,              // maxSegmentSec
+                    2,               // vadAggressiveness
+                    250,             // vadPadMs
+                    1.0              // vadMinSegmentSec
             );
 
             AiSttResponse response = aiClient.requestTranscriptionByUrl(request);
@@ -128,6 +127,9 @@ public class SttJobWorker {
                         )
                 );
             }
+
+            Job summaryJob = Job.create(recording.getRecordingId(), JobType.SUMMARY);
+            jobRepository.save(summaryJob);
 
             job.markSucceeded();
             recording.markDone();
