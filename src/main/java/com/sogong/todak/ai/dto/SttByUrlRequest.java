@@ -4,7 +4,6 @@ import java.util.UUID;
 
 public record SttByUrlRequest(
         UUID recordingId,
-        UUID consultationId,
         String language,
         String audioUrl,
         Boolean vadEnabled,
