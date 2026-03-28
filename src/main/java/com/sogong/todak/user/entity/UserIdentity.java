@@ -55,4 +55,10 @@ public class UserIdentity {
         this.providerUserId = providerUserId;
         this.providerEmail = providerEmail;
     }
+
+    public void relink(User user, String providerUserId, String providerEmail) {
+        this.user = user;
+        this.providerUserId = providerUserId;
+        this.providerEmail = providerEmail;
+    }
 }

@@ -17,6 +17,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmailAndDeletedAtIsNull(String email);
 
+    Optional<User> findByEmailAndDeletedAtIsNotNull(String email);
+
     boolean existsByEmail(String email);
 
     boolean existsByEmailAndDeletedAtIsNull(String email);
@@ -32,4 +34,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @EntityGraph(attributePaths = {"auth", "identities"})
     Optional<User> findWithAuthAndIdentitiesByUserIdAndDeletedAtIsNull(UUID userId);
+
+    @EntityGraph(attributePaths = {"auth", "identities"})
+    Optional<User> findWithAuthAndIdentitiesByEmail(String email);
+
+    @EntityGraph(attributePaths = {"auth", "identities"})
+    Optional<User> findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull(String email);
+
+    @EntityGraph(attributePaths = {"auth", "identities"})
+    Optional<User> findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull(String email);
 }

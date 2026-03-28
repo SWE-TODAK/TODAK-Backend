@@ -8,6 +8,7 @@ import com.sogong.todak.auth.oauth2.service.LocalAuthService;
 import com.sogong.todak.auth.oauth2.service.OAuthExchangeService;
 import com.sogong.todak.auth.refresh.service.RefreshTokenService;
 import com.sogong.todak.auth.service.AuthWithdrawalService;
+import com.sogong.todak.auth.service.EmailAccountStatusService;
 import com.sogong.todak.common.exception.DuplicateResourceException;
 import com.sogong.todak.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +44,7 @@ class AuthControllerValidationTest {
         localAuthService = mock(LocalAuthService.class);
         OAuthExchangeService oAuthExchangeService = mock(OAuthExchangeService.class);
         authWithdrawalService = mock(AuthWithdrawalService.class);
+        EmailAccountStatusService emailAccountStatusService = mock(EmailAccountStatusService.class);
         RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
 
@@ -50,6 +52,7 @@ class AuthControllerValidationTest {
                 localAuthService,
                 oAuthExchangeService,
                 authWithdrawalService,
+                emailAccountStatusService,
                 refreshTokenService,
                 jwtTokenProvider
         );
@@ -77,6 +80,22 @@ class AuthControllerValidationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("닉네임은 필수입니다."))
+                .andExpect(jsonPath("$.path").value("/api/v1/auth/local/signup"));
+    }
+
+    @Test
+    @DisplayName("LOCAL signup은 비밀번호 없이 요청할 수 없다")
+    void localSignupWithoutPasswordReturnsBadRequest() throws Exception {
+        Map<String, Object> request = Map.of(
+                "email", "test@example.com",
+                "nickname", "tester"
+        );
+
+        mockMvc.perform(post("/api/v1/auth/local/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("비밀번호는 필수입니다."))
                 .andExpect(jsonPath("$.path").value("/api/v1/auth/local/signup"));
     }
 
@@ -135,7 +154,9 @@ class AuthControllerValidationTest {
     @Test
     @DisplayName("회원가입 요청은 프로필 이미지 없이도 생성된다")
     void localSignupWithoutProfileImageReturnsCreated() throws Exception {
-        when(localAuthService.signup(any())).thenReturn(AuthResponse.builder().build());
+        when(localAuthService.signup(any())).thenReturn(AuthResponse.builder()
+                .isNewUser(true)
+                .build());
 
         Map<String, Object> request = Map.of(
                 "email", "test@example.com",
@@ -147,6 +168,25 @@ class AuthControllerValidationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("복구 응답이면 회원가입 API는 200을 반환한다")
+    void localSignupRestoreReturnsOk() throws Exception {
+        when(localAuthService.signup(any())).thenReturn(AuthResponse.builder()
+                .isNewUser(false)
+                .build());
+
+        Map<String, Object> request = Map.of(
+                "email", "deleted@example.com",
+                "password", "password1234",
+                "nickname", "tester"
+        );
+
+        mockMvc.perform(post("/api/v1/auth/local/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
     }
 
     @Test
