@@ -121,6 +121,49 @@ public class User {
         this.gender = gender;
     }
 
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    public void updateLocalProfile(String email, String nickname, LocalDate birthDate, Gender gender) {
+        this.email = email;
+        this.nickname = nickname;
+        this.birthDate = birthDate;
+        this.gender = gender;
+    }
+
+    public void replaceWithLocalProfile(String email, String nickname, LocalDate birthDate, Gender gender) {
+        this.email = email;
+        this.nickname = nickname;
+        this.birthDate = birthDate;
+        this.gender = gender;
+        this.profileImageUrl = null;
+    }
+
+    public void replaceWithOAuth2Profile(OAuthUserProfile profile) {
+        if (profile == null) {
+            return;
+        }
+
+        this.email = profile.getEmail();
+        this.nickname = profile.getNickname();
+        this.profileImageUrl = profile.getProfileImageUrl();
+        this.birthDate = profile.getBirthDate();
+        this.gender = null;
+    }
+
+    public void clearAuth() {
+        this.auth = null;
+    }
+
+    public boolean hasAuth() {
+        return auth != null;
+    }
+
+    public boolean hasIdentity(com.sogong.todak.auth.domain.AuthProvider provider) {
+        return identities.stream().anyMatch(identity -> identity.getProvider() == provider);
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }

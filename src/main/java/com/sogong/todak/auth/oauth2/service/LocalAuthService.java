@@ -42,38 +42,22 @@ public class LocalAuthService {
         String email = normalizeEmail(req.getEmail());
         String nickname = normalizeNickname(req.getNickname());
 
-        // 1) 중복 체크 (UX용)
-        if (userRepository.existsByEmailAndDeletedAtIsNull(email)) {
+        Optional<User> activeUser = userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull(email);
+        if (activeUser.isPresent()) {
             throw new DuplicateResourceException("이미 존재하는 이메일입니다.");
         }
-        // 2) User 생성
-        User user = User.builder()
-                .email(email)
-                .nickname(nickname)
-                .birthDate(req.getBirthDate())
-                .gender(req.getGender())
-                .build();
 
-        user = userRepository.save(user);
+        Optional<User> deletedUser = userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull(email);
+        User user = deletedUser
+                .map(existingDeletedUser -> restoreDeletedUserForLocalSignup(existingDeletedUser, req, email, nickname))
+                .orElseGet(() -> createNewLocalUser(req, email, nickname));
+        boolean isNewUser = deletedUser.isEmpty();
 
-        // 3) UserAuth 생성 (비밀번호 해시)
-        String hashed = passwordEncoder.encode(req.getPassword());
-
-        UserAuth userAuth = UserAuth.builder()
-                .user(user)
-                .passwordHash(hashed)
-                .build();
-
-        userAuthRepository.save(userAuth);
-
-        // 4) 토큰 발급 (Access=JWT, Refresh=DB stateful raw)
         TokenPairResponse token = issueTokenPair(user.getUserId());
-
-        // 5) providers 구성 (LOCAL + 연결된 소셜들)
         UserSummaryResponse userSummary = buildUserSummary(user);
 
         return AuthResponse.builder()
-                .isNewUser(true)
+                .isNewUser(isNewUser)
                 .token(token)
                 .user(userSummary)
                 .build();
@@ -88,21 +72,15 @@ public class LocalAuthService {
     public AuthResponse login(LoginRequest req) {
         String email = normalizeEmail(req.getEmail());
 
-        // 1) email로 UserAuth 조회 - user까지 로딩된 상태라고 가정
         UserAuth userAuth = userAuthRepository.findByUser_EmailAndUser_DeletedAtIsNull(email)
                 .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
 
-        // 2) 비밀번호 검증
         if (!passwordEncoder.matches(req.getPassword(), userAuth.getPasswordHash())) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
         User user = userAuth.getUser();
-
-        // 3) 토큰 발급
         TokenPairResponse token = issueTokenPair(user.getUserId());
-
-        // 4) 유저 요약
         UserSummaryResponse userSummary = buildUserSummary(user);
 
         return AuthResponse.builder()
@@ -110,6 +88,47 @@ public class LocalAuthService {
                 .token(token)
                 .user(userSummary)
                 .build();
+    }
+
+    private User createNewLocalUser(SignupRequest req, String email, String nickname) {
+        User user = User.builder()
+                .email(email)
+                .nickname(nickname)
+                .birthDate(req.getBirthDate())
+                .gender(req.getGender())
+                .build();
+
+        user = userRepository.save(user);
+        createOrUpdateLocalAuth(user, req.getPassword());
+        return user;
+    }
+
+    private User restoreDeletedUserForLocalSignup(User deletedUser, SignupRequest req, String email, String nickname) {
+        if (deletedUser.hasAuth()) {
+            deletedUser.updateLocalProfile(email, nickname, req.getBirthDate(), req.getGender());
+            deletedUser.restore();
+            createOrUpdateLocalAuth(deletedUser, req.getPassword());
+            return deletedUser;
+        }
+
+        deletedUser.replaceWithLocalProfile(email, nickname, req.getBirthDate(), req.getGender());
+        deletedUser.restore();
+        createOrUpdateLocalAuth(deletedUser, req.getPassword());
+        userIdentityRepository.findByUser_UserIdAndProvider(deletedUser.getUserId(), AuthProvider.KAKAO)
+                .ifPresent(userIdentityRepository::delete);
+        return deletedUser;
+    }
+
+    private void createOrUpdateLocalAuth(User user, String rawPassword) {
+        String hashed = passwordEncoder.encode(rawPassword);
+        userAuthRepository.findByUserId(user.getUserId())
+                .ifPresentOrElse(
+                        auth -> auth.updatePassword(hashed),
+                        () -> userAuthRepository.save(UserAuth.builder()
+                                .user(user)
+                                .passwordHash(hashed)
+                                .build())
+                );
     }
 
     // =========================
