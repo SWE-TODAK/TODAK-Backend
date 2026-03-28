@@ -10,7 +10,7 @@ import java.util.List;
 public class EmailAccountStatusResponse {
 
     private String email;
-    private EmailAccountStatus status;
+    private EmailAccountStatus accountStatus;
     private List<String> providers;
     private boolean active;
     private boolean deleted;

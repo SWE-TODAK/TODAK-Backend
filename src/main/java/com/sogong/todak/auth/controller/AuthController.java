@@ -154,6 +154,11 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/account-status")
+    public ResponseEntity<EmailAccountStatusResponse> accountStatus(@RequestParam("email") String email) {
+        return ResponseEntity.ok(emailAccountStatusService.getStatus(email));
+    }
+
     @GetMapping("/providers")
     public ResponseEntity<EmailAccountStatusResponse> providers(@RequestParam("email") String email) {
         return ResponseEntity.ok(emailAccountStatusService.getStatus(email));

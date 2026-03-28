@@ -86,14 +86,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         String email = normalizedProfile.getEmail();
         if (email != null) {
-            Optional<User> activeUser = userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull(email);
-            if (activeUser.isPresent()) {
-                throw new OAuth2AuthenticationException(
-                        new OAuth2Error("active_email_exists"),
-                        "이미 활성화된 계정입니다."
-                );
-            }
-
             Optional<User> deletedUser = userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull(email);
             if (deletedUser.isPresent()) {
                 if (deletedUser.get().hasAuth()) {
@@ -105,6 +97,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 return new ResolvedOAuthUser(
                         restoreDeletedSocialUser(deletedUser.get(), null, provider, normalizedProfile, providerUserId, email),
                         false
+                );
+            }
+
+            Optional<User> activeUser = userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull(email);
+            if (activeUser.isPresent()) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error("active_email_exists"),
+                        "이미 활성화된 계정입니다."
                 );
             }
         }

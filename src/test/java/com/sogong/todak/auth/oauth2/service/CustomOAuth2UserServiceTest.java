@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -33,7 +34,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -141,7 +144,6 @@ class CustomOAuth2UserServiceTest {
         ReflectionTestUtils.setField(deletedUser, "deletedAt", OffsetDateTime.now());
 
         when(userIdentityRepository.findByProviderAndProviderUserId(AuthProvider.KAKAO, "12345")).thenReturn(Optional.empty());
-        when(userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull("kakao@example.com")).thenReturn(Optional.empty());
         when(userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull("kakao@example.com")).thenReturn(Optional.of(deletedUser));
         when(userIdentityRepository.findByUser_UserIdAndProvider(deletedUser.getUserId(), AuthProvider.KAKAO)).thenReturn(Optional.empty());
         when(userIdentityRepository.save(any(UserIdentity.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -150,6 +152,98 @@ class CustomOAuth2UserServiceTest {
 
         assertFalse(deletedUser.isDeleted());
         verify(userIdentityRepository).save(any(UserIdentity.class));
+    }
+
+    @Test
+    @DisplayName("탈퇴한 KAKAO 유저는 providerUserId가 달라도 같은 이메일이면 기존 row를 복구하고 relink한다")
+    void restoresDeletedKakaoUserByEmailWhenProviderUserIdChanged() {
+        CustomOAuth2UserService customOAuth2UserService = serviceReturning(oauth2UserWith("99999", "kakao@example.com", "2001", "0523"));
+        OAuth2UserRequest userRequest = kakaoUserRequest();
+        User deletedUser = userWithBirthDate(null);
+        ReflectionTestUtils.setField(deletedUser, "deletedAt", OffsetDateTime.now());
+
+        UserIdentity oldIdentity = UserIdentity.builder()
+                .user(deletedUser)
+                .provider(AuthProvider.KAKAO)
+                .providerUserId("12345")
+                .providerEmail("old@example.com")
+                .build();
+        ReflectionTestUtils.setField(deletedUser, "identities", new ArrayList<>(List.of(oldIdentity)));
+
+        when(userIdentityRepository.findByProviderAndProviderUserId(AuthProvider.KAKAO, "99999")).thenReturn(Optional.empty());
+        when(userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull("kakao@example.com")).thenReturn(Optional.of(deletedUser));
+        when(userIdentityRepository.findByUser_UserIdAndProvider(deletedUser.getUserId(), AuthProvider.KAKAO))
+                .thenReturn(Optional.of(oldIdentity));
+
+        customOAuth2UserService.loadUser(userRequest);
+
+        assertFalse(deletedUser.isDeleted());
+        assertEquals("99999", oldIdentity.getProviderUserId());
+        assertEquals("kakao@example.com", oldIdentity.getProviderEmail());
+        assertEquals("카카오유저", deletedUser.getNickname());
+        verify(userRepository, never()).findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull("kakao@example.com");
+    }
+
+    @Test
+    @DisplayName("카카오에서 이메일을 주지 않고 providerUserId도 매칭되지 않으면 신규 생성으로 진행한다")
+    void createsNewUserWhenEmailMissingAndProviderUserIdDoesNotMatch() {
+        CustomOAuth2UserService customOAuth2UserService = serviceReturning(oauth2UserWith("99999", null, "2001", "0523"));
+        OAuth2UserRequest userRequest = kakaoUserRequest();
+
+        when(userIdentityRepository.findByProviderAndProviderUserId(AuthProvider.KAKAO, "99999")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> savedUser(invocation.getArgument(0)));
+        when(userIdentityRepository.save(any(UserIdentity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        customOAuth2UserService.loadUser(userRequest);
+
+        verify(userRepository).save(any(User.class));
+        verify(userRepository, never()).findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull(any());
+        verify(userRepository, never()).findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull(any());
+    }
+
+    @Test
+    @DisplayName("활성 계정이 같은 이메일로 존재하면 active_email_exists로 막힌다")
+    void throwsWhenActiveUserExistsWithSameEmail() {
+        CustomOAuth2UserService customOAuth2UserService = serviceReturning(oauth2User("2001", "0523"));
+        OAuth2UserRequest userRequest = kakaoUserRequest();
+        User activeUser = userWithBirthDate(null);
+
+        when(userIdentityRepository.findByProviderAndProviderUserId(AuthProvider.KAKAO, "12345")).thenReturn(Optional.empty());
+        when(userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull("kakao@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull("kakao@example.com")).thenReturn(Optional.of(activeUser));
+
+        OAuth2AuthenticationException exception = assertThrows(
+                OAuth2AuthenticationException.class,
+                () -> customOAuth2UserService.loadUser(userRequest)
+        );
+
+        assertEquals("active_email_exists", exception.getError().getErrorCode());
+    }
+
+    @Test
+    @DisplayName("삭제된 KAKAO 계정이 복구 가능하면 active 조회보다 먼저 복구를 시도한다")
+    void restoresDeletedKakaoBeforeCheckingActiveEmail() {
+        CustomOAuth2UserService customOAuth2UserService = serviceReturning(oauth2UserWith("99999", "kakao@example.com", "2001", "0523"));
+        OAuth2UserRequest userRequest = kakaoUserRequest();
+        User deletedUser = userWithBirthDate(null);
+        ReflectionTestUtils.setField(deletedUser, "deletedAt", OffsetDateTime.now());
+
+        UserIdentity oldIdentity = UserIdentity.builder()
+                .user(deletedUser)
+                .provider(AuthProvider.KAKAO)
+                .providerUserId("12345")
+                .providerEmail("old@example.com")
+                .build();
+        ReflectionTestUtils.setField(deletedUser, "identities", new ArrayList<>(List.of(oldIdentity)));
+
+        when(userIdentityRepository.findByProviderAndProviderUserId(AuthProvider.KAKAO, "99999")).thenReturn(Optional.empty());
+        when(userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull("kakao@example.com")).thenReturn(Optional.of(deletedUser));
+        when(userIdentityRepository.findByUser_UserIdAndProvider(deletedUser.getUserId(), AuthProvider.KAKAO))
+                .thenReturn(Optional.of(oldIdentity));
+
+        customOAuth2UserService.loadUser(userRequest);
+
+        verify(userRepository, never()).findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull("kakao@example.com");
     }
 
     @Test
@@ -168,7 +262,6 @@ class CustomOAuth2UserServiceTest {
         ReflectionTestUtils.setField(deletedLocalUser, "auth", userAuth);
 
         when(userIdentityRepository.findByProviderAndProviderUserId(AuthProvider.KAKAO, "12345")).thenReturn(Optional.empty());
-        when(userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNull("kakao@example.com")).thenReturn(Optional.empty());
         when(userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull("kakao@example.com")).thenReturn(Optional.of(deletedLocalUser));
         when(userAuthRepository.findByUserId(deletedLocalUser.getUserId())).thenReturn(Optional.of(userAuth));
         when(userIdentityRepository.findByUser_UserIdAndProvider(deletedLocalUser.getUserId(), AuthProvider.KAKAO)).thenReturn(Optional.empty());
@@ -211,8 +304,14 @@ class CustomOAuth2UserServiceTest {
     }
 
     private OAuth2User oauth2User(String birthyear, String birthday) {
+        return oauth2UserWith("12345", "kakao@example.com", birthyear, birthday);
+    }
+
+    private OAuth2User oauth2UserWith(String providerId, String email, String birthyear, String birthday) {
         Map<String, Object> kakaoAccount = new java.util.HashMap<>();
-        kakaoAccount.put("email", "kakao@example.com");
+        if (email != null) {
+            kakaoAccount.put("email", email);
+        }
         kakaoAccount.put("profile", Map.of(
                 "nickname", "카카오유저",
                 "profile_image_url", "https://example.com/profile.png"
@@ -227,7 +326,7 @@ class CustomOAuth2UserServiceTest {
         return new org.springframework.security.oauth2.core.user.DefaultOAuth2User(
                 List.of(),
                 Map.of(
-                        "id", 12345L,
+                        "id", Long.parseLong(providerId),
                         "kakao_account", kakaoAccount
                 ),
                 "id"
