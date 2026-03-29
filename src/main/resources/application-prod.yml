@@ -1,9 +1,9 @@
 app:
-  server-url: http://3.34.197.137:8080
+  server-url: http://54.116.64.125:8080
   kakao:
     admin-key: ${KAKAO_ADMIN_KEY:}
   oauth2:
-    web-callback-uri: http://3.34.197.137:3000/auth/callback
+    web-callback-uri: http://54.116.64.125:3000/auth/callback
     mobile-callback-uri: todak://auth/callback
     exchange-code-ttl-seconds: 300
     exchange-code-cleanup-ms: 60000
@@ -33,7 +33,7 @@ spring:
             client-secret: ${KAKAO_CLIENT_SECRET}
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
-            redirect-uri: "http://3.34.197.137:8080/login/oauth2/code/kakao"
+            redirect-uri: "http://54.116.64.125:8080/login/oauth2/code/kakao"
             scope:
               - profile_nickname
               - profile_image
