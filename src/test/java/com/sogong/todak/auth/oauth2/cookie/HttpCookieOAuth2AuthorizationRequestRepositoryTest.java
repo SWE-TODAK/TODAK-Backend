@@ -27,7 +27,7 @@ class HttpCookieOAuth2AuthorizationRequestRepositoryTest {
         OAuth2AuthorizationRequest authorizationRequest = OAuth2AuthorizationRequest.authorizationCode()
                 .authorizationUri("https://kauth.kakao.com/oauth/authorize")
                 .clientId("client-id")
-                .redirectUri("http://3.34.99.179:8080/login/oauth2/code/kakao")
+                .redirectUri("http://3.34.197.137:8080/login/oauth2/code/kakao")
                 .state("state")
                 .authorizationRequestUri("https://kauth.kakao.com/oauth/authorize?client_id=client-id")
                 .build();
