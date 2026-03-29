@@ -34,7 +34,7 @@ class OAuth2SuccessHandlerTest {
                 new HttpCookieOAuth2AuthorizationRequestRepository(false)
         );
         ReflectionTestUtils.setField(handler, "mobileCallbackUri", "todak://auth/callback");
-        ReflectionTestUtils.setField(handler, "webCallbackUri", "http://3.34.197.137:3000/auth/callback");
+        ReflectionTestUtils.setField(handler, "webCallbackUri", "http://54.116.64.125:3000/auth/callback");
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new Cookie(HttpCookieOAuth2AuthorizationRequestRepository.PLATFORM_PARAM_COOKIE_NAME, "mobile"));
@@ -69,7 +69,7 @@ class OAuth2SuccessHandlerTest {
                 new HttpCookieOAuth2AuthorizationRequestRepository(false)
         );
         ReflectionTestUtils.setField(handler, "mobileCallbackUri", "todak://auth/callback");
-        ReflectionTestUtils.setField(handler, "webCallbackUri", "http://3.34.197.137:3000/auth/callback");
+        ReflectionTestUtils.setField(handler, "webCallbackUri", "http://54.116.64.125:3000/auth/callback");
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(
