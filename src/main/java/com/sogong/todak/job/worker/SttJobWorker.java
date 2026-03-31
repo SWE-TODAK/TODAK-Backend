@@ -58,7 +58,7 @@ public class SttJobWorker {
         }
     }
 
-    @Transactional
+    //@Transactional
     public void processSingleJob(UUID jobId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
