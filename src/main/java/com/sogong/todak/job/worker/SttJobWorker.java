@@ -37,7 +37,7 @@ public class SttJobWorker {
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
 
-    //@Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 5000)
     public void processQueuedSttJobs() {
         List<Job> jobs = jobRepository.findTop10ByJobTypeAndStatusOrderByCreatedAtAsc(
                 JobType.STT,
@@ -62,7 +62,7 @@ public class SttJobWorker {
     public void processSingleJob(UUID jobId) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
-        //log.info("Picked STT job. jobId={}, recordingId={}", job.getJobId(), job.getRecordingId());
+        log.info("Picked STT job. jobId={}, recordingId={}", job.getJobId(), job.getRecordingId());
 
         if (job.getJobType() != JobType.STT || job.getStatus() != JobStatus.QUEUED) {
             return;
@@ -133,7 +133,7 @@ public class SttJobWorker {
 
             job.markSucceeded();
             recording.markDone();
-            //log.info("STT job succeeded. jobId={}, recordingId={}", job.getJobId(), recording.getRecordingId());
+            log.info("STT job succeeded. jobId={}, recordingId={}", job.getJobId(), recording.getRecordingId());
 
         } catch (Exception e) {
             job.markFailed(truncate(e.getMessage()));
