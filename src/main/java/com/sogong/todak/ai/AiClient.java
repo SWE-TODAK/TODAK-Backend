@@ -37,15 +37,15 @@ public class AiClient {
 //                .retrieve()
 //                .body(AiSttResponse.class);
         // [확인 1] 실제 주소와 키가 주입되었는지 로그로 확인
-        System.out.println(">>>> [AiClient DEBUG] Target URL: " + aiBaseUrl);
-        System.out.println(">>>> [AiClient DEBUG] Internal Key Length: " + (internalKey != null ? internalKey.length() : "NULL"));
+        //System.out.println(">>>> [AiClient DEBUG] Target URL: " + aiBaseUrl);
+        //System.out.println(">>>> [AiClient DEBUG] Internal Key Length: " + (internalKey != null ? internalKey.length() : "NULL"));
 
         try {
             RestClient restClient = restClientBuilder
                     .baseUrl(aiBaseUrl)
                     .build();
 
-            log.info(">>>> FastAPI로 요청을 보냅니다... (ID: {})", request.recordingId());
+            //log.info(">>>> FastAPI로 요청을 보냅니다... (ID: {})", request.recordingId());
 
             AiSttResponse response = restClient.post()
                     .uri("/internal/transcriptions/by-url")
@@ -55,13 +55,13 @@ public class AiClient {
                     .retrieve()
                     .body(AiSttResponse.class);
 
-            log.info(">>>> FastAPI 응답 수신 성공!");
+            //log.info(">>>> FastAPI 응답 수신 성공!");
             return response;
 
         } catch (Exception e) {
             // [확인 2] 에러가 났다면 절대 놓치지 않고 출력
-            System.err.println(">>>> [AiClient FATAL ERROR] 호출 실패 원인: " + e.getMessage());
-            e.printStackTrace();
+            //System.err.println(">>>> [AiClient FATAL ERROR] 호출 실패 원인: " + e.getMessage());
+            //e.printStackTrace();
             throw e;
         }
     }
