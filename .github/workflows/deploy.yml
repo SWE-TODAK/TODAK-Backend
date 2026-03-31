@@ -37,14 +37,18 @@ jobs:
           target: "/home/${{ secrets.USERNAME }}/app"
           strip_components: 2
 
+      # 2. AWS 서버에서 실행 (AI_INTERNAL_KEY 주입 추가)
       - name: Deploy to AWS
         uses: appleboy/ssh-action@master
+        env:
+          AI_INTERNAL_KEY: ${{ secrets.AI_INTERNAL_KEY }} 
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
+          envs: AI_INTERNAL_KEY
           script: |
             cd /home/${{ secrets.USERNAME }}/app
             fuser -k 8080/tcp || true
             export $(grep -v '^#' .env | xargs)            
-            nohup java -jar *.jar --spring.profiles.active=prod > app.log 2>&1 < /dev/null &
+            nohup java -jar -DAI_INTERNAL_KEY=$AI_INTERNAL_KEY *.jar --spring.profiles.active=prod > app.log 2>&1 < /dev/null &
