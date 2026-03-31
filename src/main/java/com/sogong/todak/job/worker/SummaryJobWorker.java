@@ -30,7 +30,7 @@ public class SummaryJobWorker {
     private final SummaryRepository summaryRepository;
     private final AiClient aiClient;
 
-    //@Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 5000)
     @Transactional
     public void processSummaryJobs() {
         List<Job> jobs = jobRepository.findTop10ByJobTypeAndStatusOrderByCreatedAtAsc(
