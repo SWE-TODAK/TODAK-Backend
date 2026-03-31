@@ -21,3 +21,7 @@ jwt:
 app:
   kakao:
     unlink-uri: https://kapi.kakao.com/v1/user/unlink
+
+ai:
+  base-url: http://3.35.4.153:8000
+  internal-key: ${AI_INTERNAL_KEY}
