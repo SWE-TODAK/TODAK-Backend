@@ -67,6 +67,7 @@ aws:
     region: ap-northeast-2
     prefix: recordings
     presign-exp-min: 10
+
 ai:
   base-url: http://3.35.4.153:8000
   internal-key: ${AI_INTERNAL_KEY}
