@@ -37,7 +37,7 @@ public class SttJobWorker {
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
 
-    //@Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 5000)
     public void processQueuedSttJobs() {
         List<Job> jobs = jobRepository.findTop10ByJobTypeAndStatusOrderByCreatedAtAsc(
                 JobType.STT,
