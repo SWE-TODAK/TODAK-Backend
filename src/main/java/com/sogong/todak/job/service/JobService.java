@@ -77,6 +77,17 @@ public class JobService {
     }
 
     @Transactional
+    public void completeSummaryWithText(UUID jobId, UUID recordingId, String intro, String content) {
+        summaryRepository.findByRecordingId(recordingId).ifPresentOrElse(
+                existing -> existing.update(intro, content),
+                () -> summaryRepository.save(Summary.create(recordingId, intro, content))
+        );
+
+        jobRepository.findById(jobId).ifPresent(Job::markSucceeded);
+        log.info("요약 완료(Fallback 적용) - Recording ID: {}", recordingId);
+    }
+
+    @Transactional
     public void failJob(UUID jobId, Exception e) {
         jobRepository.findById(jobId).ifPresent(job -> {
             job.markFailed(truncate(e.getMessage()));
