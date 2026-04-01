@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.UUID;
 
 public record SummaryRequest(
-        @JsonProperty("recordingid") UUID recordingId,
+        @JsonProperty("recordingId") UUID recordingId,
         @JsonProperty("transcript") String transcript
 ) {
 }
