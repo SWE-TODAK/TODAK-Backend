@@ -34,12 +34,8 @@ public class SummaryJobWorker {
         List<Job> jobs = jobRepository.findTop10ByJobTypeAndStatusOrderByCreatedAtAsc(
                 JobType.SUMMARY, JobStatus.QUEUED);
 
-        if (jobs.isEmpty()) return;
-
         for (Job job : jobs) {
-            if (summaryProcessor.startJob(job.getJobId())) {
-                summaryProcessor.process(job.getJobId());
-            }
+            summaryProcessor.process(job.getJobId());
         }
     }
 }

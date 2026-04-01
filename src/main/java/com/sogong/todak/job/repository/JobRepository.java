@@ -21,7 +21,9 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         update Job j
-           set j.status = :runningStatus
+           set j.status = :runningStatus,
+               j.attemptCount = j.attemptCount + 1,
+               j.updatedAt = CURRENT_TIMESTAMP
          where j.jobId = :jobId
            and j.status = :queuedStatus
     """)

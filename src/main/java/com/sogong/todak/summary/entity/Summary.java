@@ -50,4 +50,8 @@ public class Summary {
                 .createdAt(OffsetDateTime.now())
                 .build();
     }
+    public void update(String intro, String content) {
+        this.intro = intro;
+        this.content = content;
+    }
 }
