@@ -1,27 +1,18 @@
 package com.sogong.todak.job.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sogong.todak.ai.AiClient;
 import com.sogong.todak.ai.dto.AiSttData;
 import com.sogong.todak.ai.dto.AiSttResponse;
 import com.sogong.todak.ai.dto.SttByUrlRequest;
 import com.sogong.todak.job.entity.Job;
-import com.sogong.todak.job.entity.JobStatus;
-import com.sogong.todak.job.entity.JobType;
 import com.sogong.todak.job.repository.JobRepository;
 import com.sogong.todak.recording.entity.Recording;
 import com.sogong.todak.recording.repository.RecordingRepository;
 import com.sogong.todak.recording.service.S3PresignService;
-import com.sogong.todak.transcription.entity.Transcription;
-import com.sogong.todak.transcription.repository.TranscriptionRepository;
-import com.sogong.todak.job.service.JobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j

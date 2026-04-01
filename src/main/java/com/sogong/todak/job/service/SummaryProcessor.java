@@ -4,16 +4,12 @@ import com.sogong.todak.ai.AiClient;
 import com.sogong.todak.ai.dto.AiSummaryResponse;
 import com.sogong.todak.ai.dto.SummaryRequest;
 import com.sogong.todak.job.entity.Job;
-import com.sogong.todak.job.entity.JobStatus;
 import com.sogong.todak.job.repository.JobRepository;
-import com.sogong.todak.summary.entity.Summary;
-import com.sogong.todak.summary.repository.SummaryRepository;
 import com.sogong.todak.transcription.entity.Transcription;
 import com.sogong.todak.transcription.repository.TranscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
