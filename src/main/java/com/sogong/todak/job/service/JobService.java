@@ -1,6 +1,5 @@
 package com.sogong.todak.job.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sogong.todak.ai.dto.AiSttData;
 import com.sogong.todak.ai.dto.AiSummaryResponse;
@@ -15,15 +14,12 @@ import com.sogong.todak.transcription.entity.Transcription;
 import com.sogong.todak.transcription.repository.TranscriptionRepository;
 import com.sogong.todak.summary.repository.SummaryRepository;
 import com.sogong.todak.recording.repository.RecordingRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
-
-import static org.flywaydb.core.internal.util.JsonUtils.toJson;
 
 @Slf4j
 @Service
@@ -34,6 +30,15 @@ public class JobService {
     private final TranscriptionRepository transcriptionRepository;
     private final SummaryRepository summaryRepository;
     private final ObjectMapper objectMapper;
+
+    @Transactional(readOnly = true)
+    public JobResponse getJob(UUID jobId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 작업을 찾을 수 없습니다. ID: " + jobId));
+
+        // JobResponse.from(job)은 DTO 내부의 static factory 메서드라고 가정합니다.
+        return JobResponse.from(job);
+    }
 
     @Transactional
     public boolean claimJob(UUID jobId) {
