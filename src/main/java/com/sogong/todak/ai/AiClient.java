@@ -4,72 +4,55 @@ import com.sogong.todak.ai.dto.AiSttResponse;
 import com.sogong.todak.ai.dto.AiSummaryResponse;
 import com.sogong.todak.ai.dto.SttByUrlRequest;
 import com.sogong.todak.ai.dto.SummaryRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class AiClient {
 
-    private final RestClient.Builder restClientBuilder;
+    private final RestClient restClient;
+    private final String internalKey;
 
-    @Value("${ai.base-url}")
-    private String aiBaseUrl;
-
-    @Value("${ai.internal-key}")
-    private String internalKey;
-
-    public AiSttResponse requestTranscriptionByUrl(SttByUrlRequest request) {
-//        RestClient restClient = restClientBuilder
-//                .baseUrl(aiBaseUrl)
-//                .build();
-//
-//        return restClient.post()
-//                .uri("/internal/transcriptions/by-url")
-//                .header("X-Internal-Key", internalKey)
-//                .contentType(MediaType.APPLICATION_JSON)
-//                .body(request)
-//                .retrieve()
-//                .body(AiSttResponse.class);
-        // [확인 1] 실제 주소와 키가 주입되었는지 로그로 확인
-        //System.out.println(">>>> [AiClient DEBUG] Target URL: " + aiBaseUrl);
-        //System.out.println(">>>> [AiClient DEBUG] Internal Key Length: " + (internalKey != null ? internalKey.length() : "NULL"));
-
-        try {
-            RestClient restClient = restClientBuilder
-                    .baseUrl(aiBaseUrl)
-                    .build();
-
-            //log.info(">>>> FastAPI로 요청을 보냅니다... (ID: {})", request.recordingId());
-
-            AiSttResponse response = restClient.post()
-                    .uri("/internal/transcriptions/by-url")
-                    .header("X-Internal-Key", internalKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
-                    .retrieve()
-                    .body(AiSttResponse.class);
-
-            //log.info(">>>> FastAPI 응답 수신 성공!");
-            return response;
-
-        } catch (Exception e) {
-            // [확인 2] 에러가 났다면 절대 놓치지 않고 출력
-            //System.err.println(">>>> [AiClient FATAL ERROR] 호출 실패 원인: " + e.getMessage());
-            //e.printStackTrace();
-            throw e;
-        }
+    // 생성자 주입을 통해 RestClient를 한 번만 빌드합니다.
+    public AiClient(
+            RestClient.Builder restClientBuilder,
+            @Value("${ai.base-url}") String aiBaseUrl,
+            @Value("${ai.internal-key}") String internalKey
+    ) {
+        this.restClient = restClientBuilder.baseUrl(aiBaseUrl).build();
+        this.internalKey = internalKey;
     }
 
+    /**
+     * STT 변환 요청
+     */
+    public AiSttResponse requestTranscriptionByUrl(SttByUrlRequest request) {
+        log.info(">>>> Sending STT request to AI server. recordingId={}", request.recordingId());
+
+        return restClient.post()
+                .uri("/internal/transcriptions/by-url")
+                .header("X-Internal-Key", internalKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                // 4xx, 5xx 에러 발생 시 로그를 남기고 예외를 던짐
+                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                    log.error(">>>> AI STT API Error: Status Code {}", res.getStatusCode());
+                    throw new RuntimeException("AI STT API 호출 실패: " + res.getStatusCode());
+                })
+                .body(AiSttResponse.class);
+    }
+
+    /**
+     * 요약 요청
+     */
     public AiSummaryResponse requestSummary(SummaryRequest request) {
-        RestClient restClient = restClientBuilder
-                .baseUrl(aiBaseUrl)
-                .build();
+        log.info(">>>> Sending Summary request to AI server. recordingId={}", request.recordingId());
 
         AiSummaryResponse response = restClient.post()
                 .uri("/internal/summarizes")
@@ -77,13 +60,15 @@ public class AiClient {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                    log.error(">>>> AI Summary API Error: Status Code {}", res.getStatusCode());
+                    throw new RuntimeException("AI 요약 API 호출 실패: " + res.getStatusCode());
+                })
                 .body(AiSummaryResponse.class);
 
-        if (response == null) {
-            throw new IllegalStateException("AI summary response is null");
-        }
-
-        if (response.data() == null) {
+        // 응답 널 체크 (정상 응답이지만 바디가 비어있는 경우 대비)
+        if (response == null || response.data() == null) {
+            log.error(">>>> AI Summary response or data is null for recordingId={}", request.recordingId());
             throw new IllegalStateException("AI summary response data is null");
         }
 
