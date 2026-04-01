@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -24,7 +25,19 @@ public class AiClient {
             @Value("${ai.base-url}") String aiBaseUrl,
             @Value("${ai.internal-key}") String internalKey
     ) {
-        this.restClient = restClientBuilder.baseUrl(aiBaseUrl).build();
+        // 1. Simple 팩토리 생성
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+
+        // 2. 타임아웃 설정 (단위: 밀리초 ms)
+        factory.setConnectTimeout(5000);   // 5초
+        factory.setReadTimeout(300000);    // 300초 (5분) - AI 응답 대기용
+
+        // 3. 빌더에 주입
+        this.restClient = restClientBuilder
+                .baseUrl(aiBaseUrl)
+                .requestFactory(factory)
+                .build();
+
         this.internalKey = internalKey;
     }
 

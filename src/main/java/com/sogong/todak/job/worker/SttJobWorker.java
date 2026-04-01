@@ -22,6 +22,7 @@ public class SttJobWorker {
 
     @Scheduled(fixedDelay = 5000)
     public void processQueuedSttJobs() {
+        log.info("Worker Heartbeat");
         List<Job> jobs = jobRepository.findTop10ByJobTypeAndStatusOrderByCreatedAtAsc(
                 JobType.STT, JobStatus.QUEUED);
 
