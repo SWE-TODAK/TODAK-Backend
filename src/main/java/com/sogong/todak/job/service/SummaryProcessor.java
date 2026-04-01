@@ -40,14 +40,19 @@ public class SummaryProcessor {
             var transcription = transcriptionRepository.findByRecordingId(recordingId)
                     .orElseThrow(() -> new RuntimeException("STT 결과가 없습니다. ID: " + recordingId));
 
+            log.info(">>>> [Summary] AI 서버 요청 준비 완료. recordingId: {}", recordingId);
+
             // 2. FastAPI 요약 요청 (트랜잭션 외부)
             SummaryRequest request = new SummaryRequest(recordingId, transcription.getTranscriptText());
             AiSummaryResponse response = aiClient.requestSummary(request);
+
+            log.info(">>>> [Summary] AI 서버 응답 수신 완료!");
 
             // 3. 결과 저장 (새 트랜잭션)
             saveResults(jobId, recordingId, response);
 
         } catch (Exception e) {
+            log.error(">>>> [Summary] 에러 발생: ", e); // 에러 로그 필수!
             handleFailure(jobId, e);
         }
     }

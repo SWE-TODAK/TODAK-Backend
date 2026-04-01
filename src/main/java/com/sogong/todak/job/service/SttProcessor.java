@@ -76,6 +76,21 @@ public class SttProcessor {
 
             if (data == null) throw new IllegalStateException("AI response data is null");
 
+            // 1. Map에서 jobStatus 꺼내기
+            // 성공 시에는 이 값이 null일 수 있으므로 주의해야 합니다.
+            if (data.meta() == null) {
+                throw new IllegalStateException("AI response meta is null");
+            }
+
+            Object jobStatusObj = data.meta().get("jobStatus");
+            String jobStatus = (jobStatusObj != null) ? jobStatusObj.toString() : "SUCCESS";
+
+            // 2. 실패 여부 확인
+            if ("FAILED".equals(jobStatus) || "RETRYABLE_FAILED".equals(jobStatus)) {
+                Object errorMsg = data.meta().get("error");
+                throw new RuntimeException("AI 서버 처리 실패: " + errorMsg);
+            }
+
             // 3. 결과 저장 (새 트랜잭션)
             saveResults(jobId, job.getRecordingId(), data);
 
