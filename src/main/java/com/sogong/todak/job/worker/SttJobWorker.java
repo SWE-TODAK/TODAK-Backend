@@ -22,16 +22,12 @@ public class SttJobWorker {
 
     @Scheduled(fixedDelay = 5000)
     public void processQueuedSttJobs() {
-        log.info("Worker Heartbeat");
         List<Job> jobs = jobRepository.findTop10ByJobTypeAndStatusOrderByCreatedAtAsc(
                 JobType.STT, JobStatus.QUEUED);
 
-        if (jobs.isEmpty()) return;
-
         for (Job job : jobs) {
-            if (sttProcessor.startJob(job.getJobId())) {
-                sttProcessor.process(job.getJobId());
-            }
+            // Processor 내부에서 선점(claim)부터 처리까지 한 번에 수행
+            sttProcessor.process(job.getJobId());
         }
     }
 }
