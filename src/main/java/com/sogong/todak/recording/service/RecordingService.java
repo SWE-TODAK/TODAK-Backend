@@ -13,6 +13,8 @@ import com.sogong.todak.job.repository.JobRepository;
 import com.sogong.todak.recording.entity.RecordingStatus;
 import com.sogong.todak.recording.dto.request.UpdateRecordingMetadataRequest;
 import com.sogong.todak.recording.dto.response.RecordingDetailResponse;
+import com.sogong.todak.user.entity.User;
+import com.sogong.todak.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,26 +31,28 @@ public class RecordingService {
     private final RecordingRepository recordingRepository;
     private final S3PresignService s3PresignService;
     private final JobRepository jobRepository;
+    private final UserRepository userRepository;
 
     @Value("${aws.s3.prefix:recordings}")
     private String prefix;
+
     private String resolveTitle(String title, OffsetDateTime consultedAt) {
         if (title != null && !title.isBlank()) {
             return title.trim();
         }
-
         OffsetDateTime base = (consultedAt != null) ? consultedAt : OffsetDateTime.now();
         return base.toLocalDate() + " 진료";
     }
 
     @Transactional
     public CreateRecordingUploadResponse createUpload(UUID userId, CreateRecordingUploadRequest req) {
-        Recording recording = Recording.create(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Recording recording = Recording.create(user);
         recordingRepository.save(recording);
 
-        // storageKey 규칙: recordings/{userId}/{recordingId}.wav 처럼
-        // mimeType에 따라 확장자 선택(간단히 wav로 고정해도 됨)
-        String ext = guessExt(req.getMimeType()); // 아래 메서드 참고
+        String ext = guessExt(req.getMimeType());
         String key = prefix + "/" + userId + "/" + recording.getRecordingId() + "." + ext;
 
         String uploadUrl = s3PresignService.presignPutUrl(key, req.getMimeType());
@@ -64,7 +68,7 @@ public class RecordingService {
 
     @Transactional
     public RecordingDetailResponse updateMetadata(UUID userId, UUID recordingId, UpdateRecordingMetadataRequest req) {
-        Recording recording = recordingRepository.findByRecordingIdAndUserId(recordingId, userId)
+        Recording recording = recordingRepository.findByRecordingIdAndUser_UserId(recordingId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Recording not found"));
 
         OffsetDateTime finalConsultedAt = (req.getConsultedAt() != null)
@@ -87,15 +91,14 @@ public class RecordingService {
 
     @Transactional
     public void markUploaded(UUID userId, UUID recordingId, MarkUploadedRequest req) {
-        Recording recording = recordingRepository.findByRecordingIdAndUserId(recordingId, userId)
+        // ✅ findByRecordingIdAndUserId -> findByRecordingIdAndUser_UserId 로 변경
+        Recording recording = recordingRepository.findByRecordingIdAndUser_UserId(recordingId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Recording not found"));
 
-        // storageKey가 응답에서 준 것과 동일한지 체크(보안)
         recording.markUploaded(req.getStorageKey(), req.getMimeType(), req.getDurationMs(), req.getSampleRate());
     }
 
     private String guessExt(String mimeType) {
-        // 너희 앱이 wav 고정이면 그냥 "wav" 반환해도 됨
         if (mimeType == null) return "wav";
         return switch (mimeType) {
             case "audio/wav", "audio/wave", "audio/x-wav" -> "wav";
@@ -106,9 +109,8 @@ public class RecordingService {
     }
 
     public JobResponse startStt(UUID userId, UUID recordingId) {
-
         var recording = recordingRepository
-                .findByRecordingIdAndUserId(recordingId, userId)
+                .findByRecordingIdAndUser_UserId(recordingId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Recording not found"));
 
         if (recording.getStatus() != RecordingStatus.UPLOADED) {

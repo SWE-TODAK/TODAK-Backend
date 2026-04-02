@@ -41,7 +41,7 @@ public class RecordingDetailResponse {
                 .doctorName(r.getDoctorName())
                 .diagnosisName(r.getDiseaseName())
                 .summary(r.getSummary() != null ? r.getSummary().getContent() : null)
-                .fullTranscription(r.getTranscription() != null ? r.getTranscription().getRefinedText() : null)
+                .fullTranscription(r.getTranscription() != null ? r.getTranscription().getTranscriptText() : null)
                 .audioUrl(r.getAudioUrl())
                 .memo(r.getMemo())
                 .build();
