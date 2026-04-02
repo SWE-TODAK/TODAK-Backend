@@ -32,7 +32,8 @@ public class S3Service {
             s3Client.deleteObject(deleteObjectRequest);
             log.info("✅ S3 파일 삭제 성공: {}", storageKey);
         } catch (S3Exception e) {
-            log.error("❌ S3 파일 삭제 실패 (Storage Leak 위험): {}", storageKey, e);
+            log.error("❌ S3 파일 삭제 실패: {}", storageKey, e);
+            throw new RuntimeException("음성 파일 삭제에 실패했습니다. 다시 시도해 주세요.");
         }
     }
 }
