@@ -65,6 +65,9 @@ public class Recording {
     @Column(name = "consulted_at")
     private OffsetDateTime consultedAt;
 
+    @OneToOne(mappedBy = "recording", cascade = CascadeType.ALL)
+    private com.sogong.todak.summary.entity.Summary summary;
+
     public static Recording create(UUID userId) {
         var now = OffsetDateTime.now();
         return Recording.builder()
