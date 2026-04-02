@@ -22,6 +22,7 @@ public class RecordingListService {
 
     private final RecordingRepository recordingRepository;
     private final JobRepository jobRepository;
+    private final S3Service s3Service;
 
     public List<MyRecordingListResponse> getMyRecordingList(UUID userId) {
         return recordingRepository.findAllWithSummaryByUserId(userId)
@@ -44,7 +45,9 @@ public class RecordingListService {
     public void deleteRecording(UUID recordingId, UUID userId) {
         Recording recording = getRecordingOrThrow(recordingId, userId);
 
-        // ✅ 1. S3 실제 파일 삭제 로직 호출 위치 (TODO: S3Service 연동 필요)
+        if (recording.getStorageKey() != null) {
+            s3Service.deleteFile(recording.getStorageKey());
+        }
 
         // 연관된 Job 레코드 삭제 (FK 제약조건 위반 방지)
         jobRepository.deleteByRecordingId(recordingId);
