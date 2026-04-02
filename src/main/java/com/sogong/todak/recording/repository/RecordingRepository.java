@@ -12,12 +12,16 @@ import java.util.UUID;
 
 public interface RecordingRepository extends JpaRepository<Recording, UUID> {
 
+    // 메모 수정/삭제 등 가벼운 작업용
     Optional<Recording> findByRecordingIdAndUser_UserId(UUID recordingId, UUID userId);
+
+    // 상세 조회용 (Summary, Transcription을 쿼리 1번으로 가져와서 N+1 방지)
+    @EntityGraph(attributePaths = {"summary", "transcription"})
+    Optional<Recording> findWithDetailsByRecordingIdAndUser_UserId(UUID recordingId, UUID userId);
 
     @Query("SELECT r FROM Recording r LEFT JOIN FETCH r.summary WHERE r.user.userId = :userId ORDER BY r.createdAt DESC")
     List<Recording> findAllWithSummaryByUserId(@Param("userId") UUID userId);
 
-    List<Recording> findTop5ByUser_UserIdOrderByCreatedAtDesc(UUID userId);
     @EntityGraph(attributePaths = {"summary"})
     List<Recording> findTop4ByUser_UserIdOrderByCreatedAtDesc(UUID userId);
 }

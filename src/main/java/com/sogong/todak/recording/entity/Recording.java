@@ -1,11 +1,11 @@
 package com.sogong.todak.recording.entity;
 
+import com.sogong.todak.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
-
 
 @Entity
 @Table(name = "recordings")
@@ -19,8 +19,9 @@ public class Recording {
     @Column(name = "recording_id", nullable = false)
     private UUID recordingId;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
@@ -65,14 +66,20 @@ public class Recording {
     @Column(name = "consulted_at")
     private OffsetDateTime consultedAt;
 
+    @Column(name = "audio_url")
+    private String audioUrl;
+
+    @OneToOne(mappedBy = "recording", cascade = CascadeType.ALL)
+    private com.sogong.todak.transcription.entity.Transcription transcription;
+
     @OneToOne(mappedBy = "recording", cascade = CascadeType.ALL)
     private com.sogong.todak.summary.entity.Summary summary;
 
-    public static Recording create(UUID userId) {
+    public static Recording create(User user) {
         var now = OffsetDateTime.now();
         return Recording.builder()
                 .recordingId(UUID.randomUUID())
-                .userId(userId)
+                .user(user)
                 .status(RecordingStatus.CREATED)
                 .createdAt(now)
                 .updatedAt(now)

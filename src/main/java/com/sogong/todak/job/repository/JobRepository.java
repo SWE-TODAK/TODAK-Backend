@@ -30,4 +30,5 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
     int claimJob(@Param("jobId") UUID jobId,
                  @Param("queuedStatus") JobStatus queuedStatus,
                  @Param("runningStatus") JobStatus runningStatus);
+    void deleteByRecordingId(UUID recordingId);
 }
