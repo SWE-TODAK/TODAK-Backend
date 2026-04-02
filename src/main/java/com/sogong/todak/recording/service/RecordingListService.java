@@ -1,8 +1,10 @@
 package com.sogong.todak.recording.service;
 
+import com.sogong.todak.job.repository.JobRepository;
 import com.sogong.todak.recording.dto.request.MemoUpdateRequest;
+import com.sogong.todak.recording.dto.response.MyRecordingListResponse;
+import com.sogong.todak.recording.dto.response.RecentRecordingResponse;
 import com.sogong.todak.recording.dto.response.RecordingDetailResponse;
-import com.sogong.todak.recording.dto.response.RecordingListResponse;
 import com.sogong.todak.recording.entity.Recording;
 import com.sogong.todak.recording.repository.RecordingRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,44 +21,47 @@ import java.util.stream.Collectors;
 public class RecordingListService {
 
     private final RecordingRepository recordingRepository;
+    private final JobRepository jobRepository;
+    private final S3Service s3Service;
 
-    // 1. 내 진료 기록 리스트 조회
-    public List<RecordingListResponse> getMyRecordings(UUID userId) {
-        return recordingRepository.findAllByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(RecordingListResponse::from)
-                .collect(Collectors.toList());
+    public List<MyRecordingListResponse> getMyRecordingList(UUID userId) {
+        return recordingRepository.findAllWithSummaryByUserId(userId)
+                .stream().map(MyRecordingListResponse::from).collect(Collectors.toList());
     }
 
-    // 2. 최근 진료 기록 조회
-    public List<RecordingListResponse> getRecentRecordings(UUID userId) {
-        return recordingRepository.findTop5ByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(RecordingListResponse::from)
-                .collect(Collectors.toList());
+    public List<RecentRecordingResponse> getRecentRecordings(UUID userId) {
+        return recordingRepository.findTop4ByUser_UserIdOrderByCreatedAtDesc(userId)
+                .stream().map(RecentRecordingResponse::from).collect(Collectors.toList());
     }
 
-    // 3. 녹음 상세 조회
     public RecordingDetailResponse getRecordingDetail(UUID recordingId, UUID userId) {
-        Recording recording = getRecordingOrThrow(recordingId, userId);
+        // N+1 방지용 최적화 메서드 호출
+        Recording recording = recordingRepository.findWithDetailsByRecordingIdAndUser_UserId(recordingId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 녹음 기록을 찾을 수 없거나 권한이 없습니다."));
         return RecordingDetailResponse.from(recording);
     }
 
-    // 4. 녹음 내역 삭제
     @Transactional
     public void deleteRecording(UUID recordingId, UUID userId) {
         Recording recording = getRecordingOrThrow(recordingId, userId);
+
+        if (recording.getStorageKey() != null) {
+            s3Service.deleteFile(recording.getStorageKey());
+        }
+
+        // 연관된 Job 레코드 삭제 (FK 제약조건 위반 방지)
+        jobRepository.deleteByRecordingId(recordingId);
+
+        // 녹음 메타데이터 삭제
         recordingRepository.delete(recording);
     }
 
-    // 5. 녹음 메모 추가/수정
     @Transactional
     public void updateMemo(UUID recordingId, UUID userId, MemoUpdateRequest request) {
         Recording recording = getRecordingOrThrow(recordingId, userId);
         recording.updateMemo(request.getMemo());
     }
 
-    // 6. 녹음 메모 제거
     @Transactional
     public void deleteMemo(UUID recordingId, UUID userId) {
         Recording recording = getRecordingOrThrow(recordingId, userId);
@@ -64,7 +69,7 @@ public class RecordingListService {
     }
 
     private Recording getRecordingOrThrow(UUID recordingId, UUID userId) {
-        return recordingRepository.findByRecordingIdAndUserId(recordingId, userId)
+        return recordingRepository.findByRecordingIdAndUser_UserId(recordingId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 녹음 기록을 찾을 수 없거나 권한이 없습니다."));
     }
 }
