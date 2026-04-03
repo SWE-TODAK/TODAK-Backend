@@ -2,6 +2,7 @@ package com.sogong.todak.auth.service;
 
 import com.sogong.todak.auth.dto.request.SignupRequest;
 import com.sogong.todak.auth.dto.request.LoginRequest;
+import com.sogong.todak.auth.dto.response.AuthResult;
 import com.sogong.todak.auth.jwt.JwtTokenProvider;
 import com.sogong.todak.auth.oauth2.service.LocalAuthService;
 import com.sogong.todak.auth.refresh.service.RefreshTokenService;
@@ -89,7 +90,7 @@ class LocalAuthServiceTest {
         AuthResponse response = localAuthService.signup(request);
 
         assertEquals(LocalDate.of(1998, 7, 14), response.getUser().getBirthDate());
-        assertEquals(true, response.isNewUser());
+        assertEquals(AuthResult.LOCAL_SIGNED_UP, response.getAuthResult());
     }
 
     @Test
@@ -136,7 +137,7 @@ class LocalAuthServiceTest {
         AuthResponse response = localAuthService.signup(request);
 
         assertFalse(user.isDeleted());
-        assertFalse(response.isNewUser());
+        assertEquals(AuthResult.LOCAL_RESTORED, response.getAuthResult());
         assertEquals("복구유저", user.getNickname());
         assertEquals("new-encoded-password", userAuth.getPasswordHash());
     }
@@ -190,7 +191,7 @@ class LocalAuthServiceTest {
         localAuthService.signup(signupRequest);
         AuthResponse loginResponse = localAuthService.login(loginRequest);
 
-        assertFalse(loginResponse.isNewUser());
+        assertEquals(AuthResult.LOCAL_LOGGED_IN, loginResponse.getAuthResult());
         assertEquals("new-encoded-password", user.getAuth().getPasswordHash());
     }
 
@@ -266,7 +267,7 @@ class LocalAuthServiceTest {
         assertFalse(deletedUser.isDeleted());
         assertEquals("전환유저", deletedUser.getNickname());
         assertNull(deletedUser.getProfileImageUrl());
-        assertFalse(response.isNewUser());
+        assertEquals(AuthResult.LOCAL_CONVERTED, response.getAuthResult());
         verify(userRepository, never()).save(any(User.class));
         verify(userAuthRepository).save(any(UserAuth.class));
         verify(userIdentityRepository).delete(kakaoIdentity);

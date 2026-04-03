@@ -1,5 +1,7 @@
 package com.sogong.todak.auth.oauth2.exchange;
 
+import com.sogong.todak.auth.dto.response.AuthResult;
+
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,7 +13,7 @@ import java.util.UUID;
  * - consume: 1회용 소비(성공 시 payload 반환, 실패 시 empty)
  */
 public interface ExchangeCodeStore {
-    String issue(UUID userId, boolean isNewUser);
+    String issue(UUID userId, AuthResult authResult);
     Optional<ExchangeCodePayload> consume(String code);
 
     void cleanup();
