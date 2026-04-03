@@ -1,10 +1,12 @@
 package com.sogong.todak.user.service;
 
+import com.sogong.todak.user.dto.request.ChangePasswordRequest;
 import com.sogong.todak.user.dto.request.UpdateBirthRequest;
 import com.sogong.todak.user.dto.request.UpdateEmailRequest;
 import com.sogong.todak.user.dto.request.UpdateGenderRequest;
 import com.sogong.todak.user.dto.request.UpdateNicknameRequest;
 import com.sogong.todak.user.dto.request.UpdateProfileImageRequest;
+import com.sogong.todak.user.dto.response.PasswordChangeResponse;
 import com.sogong.todak.user.dto.response.UserMeProfileResponse;
 import com.sogong.todak.user.dto.response.UserMeResponse;
 
@@ -25,4 +27,6 @@ public interface UserService {
     void updateBirthDate(UpdateBirthRequest request);
 
     void updateGender(UpdateGenderRequest request);
+
+    PasswordChangeResponse changePassword(ChangePasswordRequest request);
 }

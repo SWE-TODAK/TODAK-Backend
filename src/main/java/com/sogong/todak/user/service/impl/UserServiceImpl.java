@@ -1,12 +1,17 @@
 package com.sogong.todak.user.service.impl;
 
 import com.sogong.todak.auth.domain.AuthProvider;
+import com.sogong.todak.auth.refresh.service.RefreshTokenService;
 import com.sogong.todak.common.exception.DuplicateResourceException;
+import com.sogong.todak.common.exception.InvalidPasswordException;
+import com.sogong.todak.common.exception.UnsupportedAuthProviderException;
+import com.sogong.todak.user.dto.request.ChangePasswordRequest;
 import com.sogong.todak.user.dto.request.UpdateBirthRequest;
 import com.sogong.todak.user.dto.request.UpdateEmailRequest;
 import com.sogong.todak.user.dto.request.UpdateGenderRequest;
 import com.sogong.todak.user.dto.request.UpdateNicknameRequest;
 import com.sogong.todak.user.dto.request.UpdateProfileImageRequest;
+import com.sogong.todak.user.dto.response.PasswordChangeResponse;
 import com.sogong.todak.user.dto.response.UserMeProfileResponse;
 import com.sogong.todak.user.dto.response.UserMeResponse;
 import com.sogong.todak.user.entity.User;
@@ -16,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +35,8 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     public UserMeResponse getMyPage() {
@@ -114,6 +122,26 @@ public class UserServiceImpl implements UserService {
         user.updateGender(request.getGender());
     }
 
+    @Override
+    @Transactional
+    public PasswordChangeResponse changePassword(ChangePasswordRequest request) {
+        User user = getCurrentUser();
+
+        if (user.getAuth() == null) {
+            throw new UnsupportedAuthProviderException("로컬 비밀번호가 없는 계정입니다.");
+        }
+
+        validatePasswordChangeRequest(user, request);
+
+        String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+        user.getAuth().updatePassword(encodedNewPassword);
+        refreshTokenService.removeAllByUserId(user.getUserId());
+
+        return PasswordChangeResponse.builder()
+                .message("비밀번호가 변경되었습니다. 다시 로그인해주세요.")
+                .build();
+    }
+
     private User getCurrentUser() {
         UUID userId = extractCurrentUserId();
         return userRepository.findWithAuthAndIdentitiesByUserIdAndDeletedAtIsNull(userId)
@@ -162,5 +190,19 @@ public class UserServiceImpl implements UserService {
 
     private String normalizeNickname(String nickname) {
         return nickname == null ? null : nickname.trim();
+    }
+
+    private void validatePasswordChangeRequest(User user, ChangePasswordRequest request) {
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getAuth().getPasswordHash())) {
+            throw new InvalidPasswordException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+            throw new IllegalArgumentException("새 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+        }
+
+        if (request.getCurrentPassword().equals(request.getNewPassword())) {
+            throw new InvalidPasswordException("새 비밀번호는 현재 비밀번호와 동일할 수 없습니다.");
+        }
     }
 }
