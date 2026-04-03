@@ -1,10 +1,12 @@
 package com.sogong.todak.user.controller;
 
+import com.sogong.todak.user.dto.request.ChangePasswordRequest;
 import com.sogong.todak.user.dto.request.UpdateBirthRequest;
 import com.sogong.todak.user.dto.request.UpdateEmailRequest;
 import com.sogong.todak.user.dto.request.UpdateGenderRequest;
 import com.sogong.todak.user.dto.request.UpdateNicknameRequest;
 import com.sogong.todak.user.dto.request.UpdateProfileImageRequest;
+import com.sogong.todak.user.dto.response.PasswordChangeResponse;
 import com.sogong.todak.user.dto.response.UserMeProfileResponse;
 import com.sogong.todak.user.dto.response.UserMeResponse;
 import com.sogong.todak.user.service.UserService;
@@ -142,5 +144,20 @@ public class UserController {
     public ResponseEntity<Void> updateGender(@Valid @RequestBody UpdateGenderRequest request) {
         userService.updateGender(request);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "내 비밀번호 변경",
+            description = "현재 로그인한 LOCAL 사용자의 비밀번호를 검증 후 변경하고, 기존 refresh token을 모두 무효화합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "변경 성공",
+                    content = @Content(schema = @Schema(implementation = PasswordChangeResponse.class))),
+            @ApiResponse(responseCode = "400", description = "비밀번호 검증 실패 또는 LOCAL 계정 아님"),
+            @ApiResponse(responseCode = "401", description = "인증 실패")
+    })
+    @PatchMapping("/me/password")
+    public ResponseEntity<PasswordChangeResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        return ResponseEntity.ok(userService.changePassword(request));
     }
 }

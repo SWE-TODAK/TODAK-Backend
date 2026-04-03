@@ -165,11 +165,4 @@ public class AuthController {
         return ResponseEntity.ok(emailAccountStatusService.getStatus(email));
     }
 
-    @PutMapping("/password")
-    public ResponseEntity<?> changePassword(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(Map.of(
-                "message", "NOT_IMPLEMENTED: change password is not wired yet.",
-                "request", body
-        ));
-    }
 }
