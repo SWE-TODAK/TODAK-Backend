@@ -1,5 +1,6 @@
 package com.sogong.todak.auth.oauth2.exchange;
 
+import com.sogong.todak.auth.dto.response.AuthResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -35,19 +36,20 @@ public class InMemoryExchangeCodeStore implements ExchangeCodeStore {
     }
 
     @Override
-    public String issue(UUID userId, boolean isNewUser) {
+    public String issue(UUID userId, AuthResult authResult) {
         Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(authResult, "authResult must not be null");
 
         String code = generateCode();
         Instant now = Instant.now();
-        ExchangeCodePayload payload = new ExchangeCodePayload(userId, isNewUser, now.plus(ttl));
+        ExchangeCodePayload payload = new ExchangeCodePayload(userId, authResult, now.plus(ttl));
 
         while (store.putIfAbsent(code, payload) != null) {
             code = generateCode();
         }
 
-        log.info("[ExchangeCode] issued code={}, userId={}, isNewUser={}, exp={}",
-                mask(code), userId, isNewUser, payload.expiresAt());
+        log.info("[ExchangeCode] issued code={}, userId={}, authResult={}, exp={}",
+                mask(code), userId, authResult, payload.expiresAt());
         return code;
     }
 

@@ -6,6 +6,7 @@ import com.sogong.todak.auth.dto.request.OAuthExchangeRequest;
 import com.sogong.todak.auth.dto.request.RefreshRequest;
 import com.sogong.todak.auth.dto.request.SignupRequest;
 import com.sogong.todak.auth.dto.request.WithdrawRequest;
+import com.sogong.todak.auth.dto.response.AuthResult;
 import com.sogong.todak.auth.dto.response.AuthResponse;
 import com.sogong.todak.auth.dto.response.EmailAccountStatusResponse;
 import com.sogong.todak.auth.dto.response.TokenPairResponse;
@@ -87,7 +88,7 @@ public class AuthController {
     @PostMapping("/local/signup")
     public ResponseEntity<AuthResponse> localSignup(@Valid @RequestBody SignupRequest request) {
         AuthResponse response = localAuthService.signup(request);
-        HttpStatus status = response.isNewUser() ? HttpStatus.CREATED : HttpStatus.OK;
+        HttpStatus status = response.getAuthResult() == AuthResult.LOCAL_SIGNED_UP ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(response);
     }
 

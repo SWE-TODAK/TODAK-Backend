@@ -3,6 +3,7 @@ package com.sogong.todak.auth.oauth2.service;
 import com.sogong.todak.auth.domain.AuthProvider;
 import com.sogong.todak.auth.dto.request.LoginRequest;
 import com.sogong.todak.auth.dto.request.SignupRequest;
+import com.sogong.todak.auth.dto.response.AuthResult;
 import com.sogong.todak.auth.dto.response.AuthResponse;
 import com.sogong.todak.auth.dto.response.TokenPairResponse;
 import com.sogong.todak.auth.dto.response.UserSummaryResponse;
@@ -48,16 +49,22 @@ public class LocalAuthService {
         }
 
         Optional<User> deletedUser = userRepository.findWithAuthAndIdentitiesByEmailAndDeletedAtIsNotNull(email);
-        User user = deletedUser
-                .map(existingDeletedUser -> restoreDeletedUserForLocalSignup(existingDeletedUser, req, email, nickname))
-                .orElseGet(() -> createNewLocalUser(req, email, nickname));
-        boolean isNewUser = deletedUser.isEmpty();
+        AuthResult authResult;
+        User user;
+        if (deletedUser.isPresent()) {
+            RestoreResult restoreResult = restoreDeletedUserForLocalSignup(deletedUser.get(), req, email, nickname);
+            user = restoreResult.user();
+            authResult = restoreResult.authResult();
+        } else {
+            user = createNewLocalUser(req, email, nickname);
+            authResult = AuthResult.LOCAL_SIGNED_UP;
+        }
 
         TokenPairResponse token = issueTokenPair(user.getUserId());
         UserSummaryResponse userSummary = buildUserSummary(user);
 
         return AuthResponse.builder()
-                .isNewUser(isNewUser)
+                .authResult(authResult)
                 .token(token)
                 .user(userSummary)
                 .build();
@@ -84,7 +91,7 @@ public class LocalAuthService {
         UserSummaryResponse userSummary = buildUserSummary(user);
 
         return AuthResponse.builder()
-                .isNewUser(false)
+                .authResult(AuthResult.LOCAL_LOGGED_IN)
                 .token(token)
                 .user(userSummary)
                 .build();
@@ -103,12 +110,12 @@ public class LocalAuthService {
         return user;
     }
 
-    private User restoreDeletedUserForLocalSignup(User deletedUser, SignupRequest req, String email, String nickname) {
+    private RestoreResult restoreDeletedUserForLocalSignup(User deletedUser, SignupRequest req, String email, String nickname) {
         if (deletedUser.hasAuth()) {
             deletedUser.updateLocalProfile(email, nickname, req.getBirthDate(), req.getGender());
             deletedUser.restore();
             createOrUpdateLocalAuth(deletedUser, req.getPassword());
-            return deletedUser;
+            return new RestoreResult(deletedUser, AuthResult.LOCAL_RESTORED);
         }
 
         deletedUser.replaceWithLocalProfile(email, nickname, req.getBirthDate(), req.getGender());
@@ -116,7 +123,7 @@ public class LocalAuthService {
         createOrUpdateLocalAuth(deletedUser, req.getPassword());
         userIdentityRepository.findByUser_UserIdAndProvider(deletedUser.getUserId(), AuthProvider.KAKAO)
                 .ifPresent(userIdentityRepository::delete);
-        return deletedUser;
+        return new RestoreResult(deletedUser, AuthResult.LOCAL_CONVERTED);
     }
 
     private void createOrUpdateLocalAuth(User user, String rawPassword) {
@@ -184,6 +191,9 @@ public class LocalAuthService {
     private String normalizeNickname(String nickname) {
         if (nickname == null) return null;
         return nickname.trim();
+    }
+
+    private record RestoreResult(User user, AuthResult authResult) {
     }
 
 }

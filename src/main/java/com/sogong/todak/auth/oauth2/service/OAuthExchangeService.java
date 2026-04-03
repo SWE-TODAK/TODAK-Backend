@@ -1,6 +1,7 @@
 package com.sogong.todak.auth.oauth2.service;
 
 import com.sogong.todak.auth.dto.request.OAuthExchangeRequest;
+import com.sogong.todak.auth.dto.response.AuthResult;
 import com.sogong.todak.auth.dto.response.AuthResponse;
 import com.sogong.todak.auth.dto.response.TokenPairResponse;
 import com.sogong.todak.auth.dto.response.UserSummaryResponse;
@@ -40,7 +41,7 @@ public class OAuthExchangeService {
                 .orElseThrow(() -> new AuthExchangeException(AuthExchangeError.INVALID_OR_EXPIRED_CODE));
 
         UUID userId = payload.userId();
-        boolean isNewUser = payload.isNewUser();
+        AuthResult authResult = payload.authResult();
 
         User user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new AuthExchangeException(AuthExchangeError.USER_NOT_FOUND));
@@ -73,7 +74,7 @@ public class OAuthExchangeService {
                 .build();
 
         return AuthResponse.builder()
-                .isNewUser(isNewUser)
+                .authResult(authResult)
                 .token(tokenPair)
                 .user(userSummary)
                 .build();

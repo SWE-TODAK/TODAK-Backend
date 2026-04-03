@@ -1,5 +1,6 @@
 package com.sogong.todak.auth.oauth2.handler;
 
+import com.sogong.todak.auth.dto.response.AuthResult;
 import com.sogong.todak.auth.oauth2.cookie.CookieUtils;
 import com.sogong.todak.auth.oauth2.cookie.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.sogong.todak.auth.oauth2.exchange.ExchangeCodeStore;
@@ -28,7 +29,7 @@ import java.util.UUID;
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private static final String ATTR_USER_ID = "app_user_id";
-    private static final String ATTR_IS_NEW_USER = "is_new_user";
+    private static final String ATTR_AUTH_RESULT = "auth_result";
     private static final String PLATFORM_WEB = "web";
     private static final String PLATFORM_MOBILE = "mobile";
 
@@ -57,9 +58,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             OAuth2User principal = requireOAuth2User(authentication);
 
             UUID userId = extractUserId(principal);
-            boolean isNewUser = extractIsNewUser(principal);
+            AuthResult authResult = extractAuthResult(principal);
 
-            String code = exchangeCodeStore.issue(userId, isNewUser);
+            String code = exchangeCodeStore.issue(userId, authResult);
 
             String callback = resolveCallback(request);
             clearAuthenticationAttributes(request, response);
@@ -154,14 +155,11 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         return (attr instanceof UUID uuid) ? uuid : UUID.fromString(attr.toString());
     }
 
-    private boolean extractIsNewUser(OAuth2User principal) {
-        Object attr = principal.getAttribute(ATTR_IS_NEW_USER);
-        if (attr instanceof Boolean bool) {
-            return bool;
-        }
+    private AuthResult extractAuthResult(OAuth2User principal) {
+        Object attr = principal.getAttribute(ATTR_AUTH_RESULT);
         if (attr instanceof String str) {
-            return Boolean.parseBoolean(str);
+            return AuthResult.valueOf(str);
         }
-        return false;
+        throw new IllegalStateException(ATTR_AUTH_RESULT + " is missing");
     }
 }

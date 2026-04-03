@@ -7,7 +7,7 @@ import lombok.Getter;
 @Builder
 public class AuthResponse {
 
-    private boolean isNewUser;
+    private AuthResult authResult;
     private TokenPairResponse token;
     private UserSummaryResponse user;
 }

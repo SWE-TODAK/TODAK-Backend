@@ -2,6 +2,7 @@ package com.sogong.todak.auth.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sogong.todak.auth.dto.request.SignupRequest;
+import com.sogong.todak.auth.dto.response.AuthResult;
 import com.sogong.todak.auth.dto.response.AuthResponse;
 import com.sogong.todak.auth.jwt.JwtTokenProvider;
 import com.sogong.todak.auth.oauth2.service.LocalAuthService;
@@ -155,7 +156,7 @@ class AuthControllerValidationTest {
     @DisplayName("회원가입 요청은 프로필 이미지 없이도 생성된다")
     void localSignupWithoutProfileImageReturnsCreated() throws Exception {
         when(localAuthService.signup(any())).thenReturn(AuthResponse.builder()
-                .isNewUser(true)
+                .authResult(AuthResult.LOCAL_SIGNED_UP)
                 .build());
 
         Map<String, Object> request = Map.of(
@@ -174,7 +175,7 @@ class AuthControllerValidationTest {
     @DisplayName("복구 응답이면 회원가입 API는 200을 반환한다")
     void localSignupRestoreReturnsOk() throws Exception {
         when(localAuthService.signup(any())).thenReturn(AuthResponse.builder()
-                .isNewUser(false)
+                .authResult(AuthResult.LOCAL_RESTORED)
                 .build());
 
         Map<String, Object> request = Map.of(

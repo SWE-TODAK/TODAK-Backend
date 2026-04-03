@@ -1,5 +1,6 @@
 package com.sogong.todak.auth.oauth2.handler;
 
+import com.sogong.todak.auth.dto.response.AuthResult;
 import com.sogong.todak.auth.oauth2.cookie.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.sogong.todak.auth.oauth2.exchange.ExchangeCodeStore;
 import jakarta.servlet.http.Cookie;
@@ -26,7 +27,7 @@ class OAuth2SuccessHandlerTest {
     @DisplayName("platform 쿠키가 mobile이면 모바일 콜백으로 리다이렉트한다")
     void redirectsToMobileCallbackWhenPlatformCookieIsMobile() throws Exception {
         ExchangeCodeStore exchangeCodeStore = mock(ExchangeCodeStore.class);
-        when(exchangeCodeStore.issue(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean()))
+        when(exchangeCodeStore.issue(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(AuthResult.class)))
                 .thenReturn("exchange-code");
 
         OAuth2SuccessHandler handler = new OAuth2SuccessHandler(
@@ -44,7 +45,7 @@ class OAuth2SuccessHandlerTest {
                 List.of(),
                 Map.of(
                         "app_user_id", UUID.randomUUID().toString(),
-                        "is_new_user", true
+                        "auth_result", AuthResult.KAKAO_SIGNED_UP.name()
                 ),
                 "app_user_id"
         );
@@ -61,7 +62,7 @@ class OAuth2SuccessHandlerTest {
     @DisplayName("redirect_uri 쿠키가 있으면 platform보다 우선 사용한다")
     void redirectsToRedirectUriCookieFirst() throws Exception {
         ExchangeCodeStore exchangeCodeStore = mock(ExchangeCodeStore.class);
-        when(exchangeCodeStore.issue(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean()))
+        when(exchangeCodeStore.issue(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(AuthResult.class)))
                 .thenReturn("exchange-code");
 
         OAuth2SuccessHandler handler = new OAuth2SuccessHandler(
@@ -83,7 +84,7 @@ class OAuth2SuccessHandlerTest {
                 List.of(),
                 Map.of(
                         "app_user_id", UUID.randomUUID().toString(),
-                        "is_new_user", false
+                        "auth_result", AuthResult.KAKAO_LOGGED_IN.name()
                 ),
                 "app_user_id"
         );

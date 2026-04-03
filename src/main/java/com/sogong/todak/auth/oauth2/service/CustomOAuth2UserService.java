@@ -1,6 +1,7 @@
 package com.sogong.todak.auth.oauth2.service;
 
 import com.sogong.todak.auth.domain.AuthProvider;
+import com.sogong.todak.auth.dto.response.AuthResult;
 import com.sogong.todak.auth.oauth2.userinfo.KakaoUserInfo;
 import com.sogong.todak.auth.oauth2.userinfo.OAuthUserProfile;
 import com.sogong.todak.user.entity.User;
@@ -26,6 +27,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+    private static final String ATTR_AUTH_RESULT = "auth_result";
 
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
@@ -58,7 +60,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         // 5. 성공 핸들러를 위한 추가 속성 구성
         return new DefaultOAuth2User(
                 List.of(new SimpleGrantedAuthority("ROLE_USER")),
-                makeAttributes(oAuth2User.getAttributes(), user, providerUserId, resolved.isNewUser()),
+                makeAttributes(oAuth2User.getAttributes(), user, providerUserId, resolved.authResult()),
                 "app_user_id"
         );
     }
@@ -73,15 +75,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 if (user.hasAuth()) {
                     return new ResolvedOAuthUser(
                             resetDeletedUserForKakaoSignup(user, linkedIdentity.get(), provider, normalizedProfile, providerUserId),
-                            false
+                            AuthResult.KAKAO_CONVERTED
                     );
                 }
                 return new ResolvedOAuthUser(
                         restoreDeletedSocialUser(user, linkedIdentity.get(), provider, normalizedProfile, providerUserId, normalizedProfile.getEmail()),
-                        false
+                        AuthResult.KAKAO_RESTORED
                 );
             }
-            return new ResolvedOAuthUser(user, false);
+            return new ResolvedOAuthUser(user, AuthResult.KAKAO_LOGGED_IN);
         }
 
         String email = normalizedProfile.getEmail();
@@ -91,12 +93,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 if (deletedUser.get().hasAuth()) {
                     return new ResolvedOAuthUser(
                             resetDeletedUserForKakaoSignup(deletedUser.get(), null, provider, normalizedProfile, providerUserId),
-                            false
+                            AuthResult.KAKAO_CONVERTED
                     );
                 }
                 return new ResolvedOAuthUser(
                         restoreDeletedSocialUser(deletedUser.get(), null, provider, normalizedProfile, providerUserId, email),
-                        false
+                        AuthResult.KAKAO_RESTORED
                 );
             }
 
@@ -111,7 +113,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         return new ResolvedOAuthUser(
                 registerNewSocialUser(provider, providerUserId, normalizedProfile),
-                true
+                AuthResult.KAKAO_SIGNED_UP
         );
     }
 
@@ -211,11 +213,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return (nickname == null || nickname.isBlank()) ? "토닥이" : nickname;
     }
 
-    private Map<String, Object> makeAttributes(Map<String, Object> original, User user, String pId, boolean isNewUser) {
+    private Map<String, Object> makeAttributes(Map<String, Object> original, User user, String pId, AuthResult authResult) {
         Map<String, Object> attributes = new HashMap<>(original);
         attributes.put("app_user_id", user.getUserId()); // UUID 객체 유지
         attributes.put("provider_user_id", pId);
-        attributes.put("is_new_user", isNewUser);
+        attributes.put(ATTR_AUTH_RESULT, authResult.name());
         return attributes;
     }
 
@@ -228,7 +230,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .build();
     }
 
-    private record ResolvedOAuthUser(User user, boolean isNewUser) {
+    private record ResolvedOAuthUser(User user, AuthResult authResult) {
     }
 
     private AuthProvider mapProvider(String id) {
