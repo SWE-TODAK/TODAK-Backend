@@ -1,9 +1,7 @@
 package com.sogong.todak.summary.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.sogong.todak.recording.entity.Recording;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,6 +26,10 @@ public class Summary {
     @Column(name = "recording_id", nullable = false, unique = true)
     private UUID recordingId;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recording_id", insertable = false, updatable = false)
+    private Recording recording;
+
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
@@ -50,6 +52,7 @@ public class Summary {
                 .createdAt(OffsetDateTime.now())
                 .build();
     }
+
     public void update(String intro, String content) {
         this.intro = intro;
         this.content = content;

@@ -1,9 +1,7 @@
 package com.sogong.todak.transcription.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.sogong.todak.recording.entity.Recording;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
@@ -23,6 +21,10 @@ public class Transcription {
 
     @Column(name = "recording_id", nullable = false, unique = true)
     private UUID recordingId;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recording_id", insertable = false, updatable = false)
+    private Recording recording;
 
     @Column(name = "transcript_text", nullable = false, columnDefinition = "TEXT")
     private String transcriptText;
