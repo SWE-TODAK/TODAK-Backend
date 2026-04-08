@@ -16,6 +16,10 @@ app:
       refresh-name: REFRESH_TOKEN
       secure: false
       same-site: Lax
+  email-verification:
+    mail:
+      from: ${MAIL_FROM:no-reply@todak.com}
+      enabled: ${EMAIL_VERIFICATION_MAIL_ENABLED:true}
 
 spring:
   datasource:
@@ -47,6 +51,11 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
 
 logging:
   level:

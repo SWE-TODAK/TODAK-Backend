@@ -4,10 +4,12 @@ import com.sogong.todak.auth.refresh.service.RefreshTokenService;
 import com.sogong.todak.common.exception.InvalidPasswordException;
 import com.sogong.todak.common.exception.UnsupportedAuthProviderException;
 import com.sogong.todak.user.dto.request.ChangePasswordRequest;
+import com.sogong.todak.user.dto.response.PasswordChangeCodeSendResponse;
 import com.sogong.todak.user.dto.response.PasswordChangeResponse;
 import com.sogong.todak.user.entity.User;
 import com.sogong.todak.user.entity.UserAuth;
 import com.sogong.todak.user.repository.UserRepository;
+import com.sogong.todak.user.service.PasswordChangeVerificationService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,9 @@ class UserServiceImplTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    @Mock
+    private PasswordChangeVerificationService passwordChangeVerificationService;
+
     @InjectMocks
     private UserServiceImpl userService;
 
@@ -55,17 +60,20 @@ class UserServiceImplTest {
     void changePasswordSuccess() {
         UUID userId = UUID.randomUUID();
         User user = localUser(userId, "encoded-current");
-        ChangePasswordRequest request = changePasswordRequest("current-password", "new-password123", "new-password123");
+        ChangePasswordRequest request = changePasswordRequest("123456", "current-password", "new-password123", "new-password123");
 
         authenticate(userId);
         when(userRepository.findWithAuthAndIdentitiesByUserIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("current-password", "encoded-current")).thenReturn(true);
+        when(passwordEncoder.matches("new-password123", "encoded-current")).thenReturn(false);
         when(passwordEncoder.encode("new-password123")).thenReturn("encoded-new");
 
         PasswordChangeResponse response = userService.changePassword(request);
 
         assertEquals("비밀번호가 변경되었습니다. 다시 로그인해주세요.", response.getMessage());
         assertEquals("encoded-new", user.getAuth().getPasswordHash());
+        verify(passwordChangeVerificationService).verifyCode(user, "123456");
+        verify(passwordChangeVerificationService).consumeCode(userId);
         verify(refreshTokenService).removeAllByUserId(userId);
     }
 
@@ -74,13 +82,14 @@ class UserServiceImplTest {
     void changePasswordFailsWhenLocalAuthMissing() {
         UUID userId = UUID.randomUUID();
         User user = userWithoutLocalAuth(userId);
-        ChangePasswordRequest request = changePasswordRequest("current-password", "new-password123", "new-password123");
+        ChangePasswordRequest request = changePasswordRequest("123456", "current-password", "new-password123", "new-password123");
 
         authenticate(userId);
         when(userRepository.findWithAuthAndIdentitiesByUserIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(user));
 
         assertThrows(UnsupportedAuthProviderException.class, () -> userService.changePassword(request));
 
+        verify(passwordChangeVerificationService, never()).verifyCode(user, "123456");
         verify(refreshTokenService, never()).removeAllByUserId(userId);
     }
 
@@ -89,7 +98,7 @@ class UserServiceImplTest {
     void changePasswordFailsWhenCurrentPasswordMismatch() {
         UUID userId = UUID.randomUUID();
         User user = localUser(userId, "encoded-current");
-        ChangePasswordRequest request = changePasswordRequest("wrong-password", "new-password123", "new-password123");
+        ChangePasswordRequest request = changePasswordRequest("123456", "wrong-password", "new-password123", "new-password123");
 
         authenticate(userId);
         when(userRepository.findWithAuthAndIdentitiesByUserIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(user));
@@ -97,6 +106,7 @@ class UserServiceImplTest {
 
         assertThrows(InvalidPasswordException.class, () -> userService.changePassword(request));
 
+        verify(passwordChangeVerificationService).verifyCode(user, "123456");
         verify(refreshTokenService, never()).removeAllByUserId(userId);
     }
 
@@ -105,7 +115,7 @@ class UserServiceImplTest {
     void changePasswordFailsWhenConfirmationMismatch() {
         UUID userId = UUID.randomUUID();
         User user = localUser(userId, "encoded-current");
-        ChangePasswordRequest request = changePasswordRequest("current-password", "new-password123", "different-password");
+        ChangePasswordRequest request = changePasswordRequest("123456", "current-password", "new-password123", "different-password");
 
         authenticate(userId);
         when(userRepository.findWithAuthAndIdentitiesByUserIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(user));
@@ -113,6 +123,7 @@ class UserServiceImplTest {
 
         assertThrows(IllegalArgumentException.class, () -> userService.changePassword(request));
 
+        verify(passwordChangeVerificationService).verifyCode(user, "123456");
         verify(refreshTokenService, never()).removeAllByUserId(userId);
     }
 
@@ -121,7 +132,7 @@ class UserServiceImplTest {
     void changePasswordFailsWhenNewPasswordMatchesCurrentPassword() {
         UUID userId = UUID.randomUUID();
         User user = localUser(userId, "encoded-current");
-        ChangePasswordRequest request = changePasswordRequest("same-password", "same-password", "same-password");
+        ChangePasswordRequest request = changePasswordRequest("123456", "same-password", "same-password", "same-password");
 
         authenticate(userId);
         when(userRepository.findWithAuthAndIdentitiesByUserIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(user));
@@ -129,7 +140,29 @@ class UserServiceImplTest {
 
         assertThrows(InvalidPasswordException.class, () -> userService.changePassword(request));
 
+        verify(passwordChangeVerificationService).verifyCode(user, "123456");
         verify(refreshTokenService, never()).removeAllByUserId(userId);
+    }
+
+    @Test
+    @DisplayName("비밀번호 변경 인증코드 발송은 현재 사용자 이메일 기준으로 처리한다")
+    void sendPasswordChangeVerificationCodeSuccess() {
+        UUID userId = UUID.randomUUID();
+        User user = localUser(userId, "encoded-current");
+
+        authenticate(userId);
+        when(userRepository.findWithAuthAndIdentitiesByUserIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(user));
+        when(passwordChangeVerificationService.sendCode(user)).thenReturn(PasswordChangeCodeSendResponse.builder()
+                .message("인증코드를 이메일로 발송했습니다.")
+                .maskedEmail("loc***@example.com")
+                .expiresInSeconds(300)
+                .resendAvailableInSeconds(60)
+                .build());
+
+        PasswordChangeCodeSendResponse response = userService.sendPasswordChangeVerificationCode();
+
+        assertEquals("인증코드를 이메일로 발송했습니다.", response.getMessage());
+        verify(passwordChangeVerificationService).sendCode(user);
     }
 
     private void authenticate(UUID userId) {
@@ -138,11 +171,17 @@ class UserServiceImplTest {
         );
     }
 
-    private ChangePasswordRequest changePasswordRequest(String currentPassword, String newPassword, String newPasswordConfirm) {
+    private ChangePasswordRequest changePasswordRequest(
+            String verificationCode,
+            String currentPassword,
+            String newPassword,
+            String confirmNewPassword
+    ) {
         ChangePasswordRequest request = new ChangePasswordRequest();
+        ReflectionTestUtils.setField(request, "verificationCode", verificationCode);
         ReflectionTestUtils.setField(request, "currentPassword", currentPassword);
         ReflectionTestUtils.setField(request, "newPassword", newPassword);
-        ReflectionTestUtils.setField(request, "newPasswordConfirm", newPasswordConfirm);
+        ReflectionTestUtils.setField(request, "confirmNewPassword", confirmNewPassword);
         return request;
     }
 

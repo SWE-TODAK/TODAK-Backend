@@ -54,13 +54,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             InvalidPasswordException.class,
-            UnsupportedAuthProviderException.class
+            UnsupportedAuthProviderException.class,
+            EmailVerificationException.class
     })
     public ResponseEntity<ErrorResponse> handleBadRequestBusinessException(
             RuntimeException ex,
             HttpServletRequest request
     ) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyRequestsException(
+            TooManyRequestsException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), request);
     }
 
     @ExceptionHandler({

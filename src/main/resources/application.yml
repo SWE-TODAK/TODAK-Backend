@@ -3,6 +3,21 @@ spring:
     name: todak
   profiles:
     active: prod
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+            required: ${MAIL_SMTP_STARTTLS_REQUIRED:true}
+          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT:5000}
+          timeout: ${MAIL_SMTP_TIMEOUT:5000}
+          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT:5000}
 
   jpa:
     open-in-view: false
@@ -21,6 +36,15 @@ jwt:
 app:
   kakao:
     unlink-uri: https://kapi.kakao.com/v1/user/unlink
+  email-verification:
+    code:
+      ttl-seconds: ${EMAIL_VERIFICATION_CODE_TTL_SECONDS:300}
+      length: ${EMAIL_VERIFICATION_CODE_LENGTH:6}
+      resend-interval-seconds: ${EMAIL_VERIFICATION_RESEND_INTERVAL_SECONDS:60}
+      max-attempts: ${EMAIL_VERIFICATION_MAX_ATTEMPTS:5}
+    mail:
+      from: ${MAIL_FROM:no-reply@todak.local}
+      enabled: ${EMAIL_VERIFICATION_MAIL_ENABLED:false}
 
 ai:
   base-url: http://3.35.4.153:8000
