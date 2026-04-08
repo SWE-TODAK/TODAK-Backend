@@ -3,6 +3,11 @@ spring:
     url: jdbc:postgresql://127.0.0.1:5432/todak_test
     username: todak_app
     password: TodakApp!2026
+  mail:
+    host: localhost
+    port: 2525
+    username: test
+    password: test
 
   flyway:
     enabled: true
@@ -18,3 +23,7 @@ jwt:
 app:
   kakao:
     admin-key: test-kakao-admin-key
+  email-verification:
+    mail:
+      from: no-reply@test.todak.local
+      enabled: false

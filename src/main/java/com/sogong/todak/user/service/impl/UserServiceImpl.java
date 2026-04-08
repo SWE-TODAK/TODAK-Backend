@@ -11,11 +11,13 @@ import com.sogong.todak.user.dto.request.UpdateEmailRequest;
 import com.sogong.todak.user.dto.request.UpdateGenderRequest;
 import com.sogong.todak.user.dto.request.UpdateNicknameRequest;
 import com.sogong.todak.user.dto.request.UpdateProfileImageRequest;
+import com.sogong.todak.user.dto.response.PasswordChangeCodeSendResponse;
 import com.sogong.todak.user.dto.response.PasswordChangeResponse;
 import com.sogong.todak.user.dto.response.UserMeProfileResponse;
 import com.sogong.todak.user.dto.response.UserMeResponse;
 import com.sogong.todak.user.entity.User;
 import com.sogong.todak.user.repository.UserRepository;
+import com.sogong.todak.user.service.PasswordChangeVerificationService;
 import com.sogong.todak.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -24,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -37,6 +40,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final PasswordChangeVerificationService passwordChangeVerificationService;
 
     @Override
     public UserMeResponse getMyPage() {
@@ -124,17 +128,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public PasswordChangeCodeSendResponse sendPasswordChangeVerificationCode() {
+        User user = getCurrentUser();
+        validatePasswordChangeAvailable(user);
+        return passwordChangeVerificationService.sendCode(user);
+    }
+
+    @Override
+    @Transactional
     public PasswordChangeResponse changePassword(ChangePasswordRequest request) {
         User user = getCurrentUser();
+        validatePasswordChangeAvailable(user);
 
-        if (user.getAuth() == null) {
-            throw new UnsupportedAuthProviderException("로컬 비밀번호가 없는 계정입니다.");
-        }
-
+        passwordChangeVerificationService.verifyCode(user, request.getVerificationCode());
         validatePasswordChangeRequest(user, request);
 
         String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
         user.getAuth().updatePassword(encodedNewPassword);
+        passwordChangeVerificationService.consumeCode(user.getUserId());
         refreshTokenService.removeAllByUserId(user.getUserId());
 
         return PasswordChangeResponse.builder()
@@ -192,16 +203,26 @@ public class UserServiceImpl implements UserService {
         return nickname == null ? null : nickname.trim();
     }
 
+    private void validatePasswordChangeAvailable(User user) {
+        if (user.getAuth() == null) {
+            throw new UnsupportedAuthProviderException("로컬 비밀번호가 없는 계정입니다.");
+        }
+
+        if (!StringUtils.hasText(user.getEmail())) {
+            throw new IllegalArgumentException("이메일이 등록되지 않은 계정입니다.");
+        }
+    }
+
     private void validatePasswordChangeRequest(User user, ChangePasswordRequest request) {
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getAuth().getPasswordHash())) {
             throw new InvalidPasswordException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
             throw new IllegalArgumentException("새 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
         }
 
-        if (request.getCurrentPassword().equals(request.getNewPassword())) {
+        if (passwordEncoder.matches(request.getNewPassword(), user.getAuth().getPasswordHash())) {
             throw new InvalidPasswordException("새 비밀번호는 현재 비밀번호와 동일할 수 없습니다.");
         }
     }

@@ -39,6 +39,9 @@ dependencies {
     // OAuth2 (Kakao Login)
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
 
+    // Mail
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
     // DB Migration (Flyway) - 중복 제거 + 버전 강제
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     runtimeOnly("org.flywaydb:flyway-database-postgresql:$flywayVersion")

@@ -2,6 +2,7 @@ package com.sogong.todak.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sogong.todak.common.exception.GlobalExceptionHandler;
+import com.sogong.todak.user.dto.response.PasswordChangeCodeSendResponse;
 import com.sogong.todak.user.dto.response.PasswordChangeResponse;
 import com.sogong.todak.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,6 +71,24 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("비밀번호 변경 인증코드 발송 요청은 200을 반환한다")
+    void sendPasswordChangeVerificationCodeReturnsOk() throws Exception {
+        when(userService.sendPasswordChangeVerificationCode()).thenReturn(PasswordChangeCodeSendResponse.builder()
+                .message("인증코드를 이메일로 발송했습니다.")
+                .maskedEmail("loc***@example.com")
+                .expiresInSeconds(300)
+                .resendAvailableInSeconds(60)
+                .build());
+
+        mockMvc.perform(post("/api/v1/users/me/password/email/send-code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("인증코드를 이메일로 발송했습니다."))
+                .andExpect(jsonPath("$.maskedEmail").value("loc***@example.com"));
+
+        verify(userService).sendPasswordChangeVerificationCode();
+    }
+
+    @Test
     @DisplayName("비밀번호 변경 요청은 200과 메시지를 반환한다")
     void changePasswordReturnsOk() throws Exception {
         when(userService.changePassword(any())).thenReturn(PasswordChangeResponse.builder()
@@ -76,9 +96,10 @@ class UserControllerTest {
                 .build());
 
         Map<String, Object> request = Map.of(
+                "verificationCode", "123456",
                 "currentPassword", "password1234",
                 "newPassword", "new-password123",
-                "newPasswordConfirm", "new-password123"
+                "confirmNewPassword", "new-password123"
         );
 
         mockMvc.perform(patch("/api/v1/users/me/password")
@@ -94,8 +115,9 @@ class UserControllerTest {
     @DisplayName("비밀번호 변경 요청에 currentPassword가 없으면 400을 반환한다")
     void changePasswordWithoutCurrentPasswordReturnsBadRequest() throws Exception {
         Map<String, Object> request = Map.of(
+                "verificationCode", "123456",
                 "newPassword", "new-password123",
-                "newPasswordConfirm", "new-password123"
+                "confirmNewPassword", "new-password123"
         );
 
         mockMvc.perform(patch("/api/v1/users/me/password")
@@ -103,5 +125,21 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("현재 비밀번호는 필수입니다."));
+    }
+
+    @Test
+    @DisplayName("비밀번호 변경 요청에 verificationCode가 없으면 400을 반환한다")
+    void changePasswordWithoutVerificationCodeReturnsBadRequest() throws Exception {
+        Map<String, Object> request = Map.of(
+                "currentPassword", "password1234",
+                "newPassword", "new-password123",
+                "confirmNewPassword", "new-password123"
+        );
+
+        mockMvc.perform(patch("/api/v1/users/me/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("인증코드는 필수입니다."));
     }
 }

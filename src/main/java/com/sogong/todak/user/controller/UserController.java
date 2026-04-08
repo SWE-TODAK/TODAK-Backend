@@ -1,11 +1,13 @@
 package com.sogong.todak.user.controller;
 
+import com.sogong.todak.auth.dto.response.ErrorResponse;
 import com.sogong.todak.user.dto.request.ChangePasswordRequest;
 import com.sogong.todak.user.dto.request.UpdateBirthRequest;
 import com.sogong.todak.user.dto.request.UpdateEmailRequest;
 import com.sogong.todak.user.dto.request.UpdateGenderRequest;
 import com.sogong.todak.user.dto.request.UpdateNicknameRequest;
 import com.sogong.todak.user.dto.request.UpdateProfileImageRequest;
+import com.sogong.todak.user.dto.response.PasswordChangeCodeSendResponse;
 import com.sogong.todak.user.dto.response.PasswordChangeResponse;
 import com.sogong.todak.user.dto.response.UserMeProfileResponse;
 import com.sogong.todak.user.dto.response.UserMeResponse;
@@ -20,9 +22,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -147,13 +150,34 @@ public class UserController {
     }
 
     @Operation(
+            summary = "비밀번호 변경 인증코드 발송",
+            description = "현재 로그인한 LOCAL 사용자의 이메일로 비밀번호 변경용 인증코드를 발송합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "발송 성공",
+                    content = @Content(schema = @Schema(implementation = PasswordChangeCodeSendResponse.class))),
+            @ApiResponse(responseCode = "400", description = "LOCAL 계정 아님 또는 이메일 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "429", description = "재전송 제한",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "502", description = "메일 발송 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/me/password/email/send-code")
+    public ResponseEntity<PasswordChangeCodeSendResponse> sendPasswordChangeVerificationCode() {
+        return ResponseEntity.ok(userService.sendPasswordChangeVerificationCode());
+    }
+
+    @Operation(
             summary = "내 비밀번호 변경",
-            description = "현재 로그인한 LOCAL 사용자의 비밀번호를 검증 후 변경하고, 기존 refresh token을 모두 무효화합니다."
+            description = "현재 로그인한 LOCAL 사용자의 이메일 인증코드와 기존 비밀번호를 검증한 뒤 비밀번호를 변경하고, 기존 refresh token을 모두 무효화합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "변경 성공",
                     content = @Content(schema = @Schema(implementation = PasswordChangeResponse.class))),
-            @ApiResponse(responseCode = "400", description = "비밀번호 검증 실패 또는 LOCAL 계정 아님"),
+            @ApiResponse(responseCode = "400", description = "인증코드 또는 비밀번호 검증 실패, LOCAL 계정 아님",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증 실패")
     })
     @PatchMapping("/me/password")
