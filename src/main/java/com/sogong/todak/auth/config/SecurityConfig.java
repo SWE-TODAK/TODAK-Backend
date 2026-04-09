@@ -62,7 +62,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/auth/me").authenticated()
-                        .requestMatchers("/api/v1/recordings/**").authenticated()
+                        .requestMatchers("/api/v1/recordings/**","/api/v1/calendar/**").authenticated()
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/oauth2/**",

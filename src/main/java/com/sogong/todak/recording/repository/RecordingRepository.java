@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,4 +25,9 @@ public interface RecordingRepository extends JpaRepository<Recording, UUID> {
 
     @EntityGraph(attributePaths = {"summary"})
     List<Recording> findTop4ByUser_UserIdOrderByCreatedAtDesc(UUID userId);
+
+    @EntityGraph(attributePaths = {"summary"})
+    List<Recording> findByUser_UserIdAndCreatedAtBetween(UUID userId, OffsetDateTime start, OffsetDateTime end);
+
+    List<Recording> findByUser_UseerIdAndCreatedAtBetween(OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore);
 }
