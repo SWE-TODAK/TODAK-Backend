@@ -39,7 +39,7 @@ public class CalendarService {
                  .map(time -> time.atZoneSameInstant(ZoneId.of("Asia/Seoul")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
                  .distinct()
                  .collect(Collectors.toList());
-        return new CalendarMarkResponse(dates); // 완성 후 이 줄은 지워주세요
+        return new CalendarMarkResponse(dates);
     }
 
     public List<CalendarDetailResponse> getCalendarDetails(UUID userId, String date) {

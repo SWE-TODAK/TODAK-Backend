@@ -28,6 +28,4 @@ public interface RecordingRepository extends JpaRepository<Recording, UUID> {
 
     @EntityGraph(attributePaths = {"summary"})
     List<Recording> findByUser_UserIdAndCreatedAtBetween(UUID userId, OffsetDateTime start, OffsetDateTime end);
-
-    List<Recording> findByUser_UseerIdAndCreatedAtBetween(OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore);
 }
